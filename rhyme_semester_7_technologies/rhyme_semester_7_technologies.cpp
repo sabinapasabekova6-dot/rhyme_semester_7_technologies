@@ -12,6 +12,9 @@ int main() {
     SetConsoleOutputCP(1251);
     //получаем название входного файла
     string path = requestValidInputFile();
+
+    //создаём файл с пронумерованными предложениями
+    writeNumberedSentences(path);
    
     return 0;
 }
