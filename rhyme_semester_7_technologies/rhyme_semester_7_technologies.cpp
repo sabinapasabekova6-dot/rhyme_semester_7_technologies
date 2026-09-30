@@ -6,6 +6,8 @@ using namespace std;
 int main()
 {
     cout << "cjckf";
+
+  cout << "cjckf";
 }
 
 // Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
