@@ -9,7 +9,7 @@ namespace iverbs{
 		// все символы лежат в диапазоне значений <128, поэтому все что больше нас не интересует
 		if(ch >= 128) return false;
 		if (isspace(ch)) return true;
-		constexpr string_view symbols = ".,;:!?\"'()[]{}<>/\\|*&^%#@$~`";
+		string_view symbols = ".,;:!?\"()[]{}<>/\\|*&^%#@$~";
 		// приведение к char допустимо, интересующие буквы с >=128 а символы < 128
 		bool flag = (symbols.find(static_cast<char>(ch)) != string_view::npos);
 		// npos максимально возможное значение для size_t 
@@ -30,7 +30,7 @@ namespace iverbs{
 				continue;
 			}	
 
-			if (c == '-' || c == '\''){
+			if (c == '-' || c == '\'' || c == '`'){
 				bool has_prev = !current.empty();
 				bool has_next = (i + 1 < src.size()) && !is_separator(static_cast<unsigned char>(src[i + 1]));
 				// если предыдущая часть слова есть и следующая часть не символ пунктуации 

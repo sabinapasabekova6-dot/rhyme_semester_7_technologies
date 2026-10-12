@@ -7,15 +7,15 @@ using namespace iverbs;
 
 TEST(Parse, SimpleSentence) {
     IdentVerbs iv("Жил да был черный кот за углом.");
-    ASSERT_EQ(iv.words().size(), 6u);
+    ASSERT_EQ(iv.words().size(), 7u);
     EXPECT_EQ(iv.words()[0], "жил");
-    EXPECT_EQ(iv.words()[5], "углом");
+    EXPECT_EQ(iv.words()[6], "углом");
 }
 
 TEST(Parse, PunctuationAttached) {
     IdentVerbs iv("И кота ненавидел: весь дом (кто-то)!");
-    ASSERT_EQ(iv.words().size(), 5u);
-    EXPECT_EQ(iv.words()[4], "кто-то");
+    ASSERT_EQ(iv.words().size(), 6u);
+    EXPECT_EQ(iv.words()[5], "кто-то");
 }
 
 TEST(Parse, ApostropheInsideWord) {
@@ -29,7 +29,7 @@ TEST(Parse, ApostropheInsideWord) {
 
 TEST(Parse, DashBetweenWords) {
     IdentVerbs iv("Печь пироги - это печь нужна.");
-    ASSERT_EQ(iv.words().size(), 6u);
+    ASSERT_EQ(iv.words().size(), 5u);
     EXPECT_EQ(iv.words()[0], "печь");
     EXPECT_EQ(iv.words()[1], "пироги");
     EXPECT_EQ(iv.words()[2], "это");
