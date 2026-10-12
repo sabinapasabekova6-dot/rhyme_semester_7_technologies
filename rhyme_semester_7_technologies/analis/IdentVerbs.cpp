@@ -1,7 +1,27 @@
 #include "IdentVerbs.h"
 
-namespace iverbs{
+namespace iverbs {
 	using std::string_view;
+
+	// анонимный namespace для хранение словарей морфем и прочего
+	namespace {
+		// TODO: разобраться чем анонимный namespace лучше кроме хранения данных
+		// в rodata
+		
+	}
+
+	IdentVerbs::IdentVerbs(const string& src){
+		parse_sentence(src);
+		normalize();
+	}
+
+	vector<VerbInfo> IdentVerbs::analize_all_words(){
+		// В цикле вызов проверки каждого слова в структуре
+	}
+
+	VerbInfo IdentVerbs::analize_word(const string& src){
+
+	}
 
 	// Функция проверки, является ли переданный символ (ch), знаком
 	// пунктуации или специальным символом
@@ -85,12 +105,6 @@ namespace iverbs{
 
 	void IdentVerbs::normalize() {
 		for (string& w : sentence_) normalize_word(w);
-	}
-
-
-	IdentVerbs::IdentVerbs(const string& src){
-		parse_sentence(src);
-		normalize();
 	}
 
 }
