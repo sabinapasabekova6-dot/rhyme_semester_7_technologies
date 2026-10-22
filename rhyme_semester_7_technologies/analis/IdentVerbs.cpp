@@ -97,16 +97,16 @@ namespace iverbs {
 				"вшись", "вшись", "вши", "явшись", "яв", "ав", "ив", "ыв",
 				"вшись", "ясь", "авшись", "ившись"
 			};
+			for (const string_view& suf : gerund_suffixes) {
+				if (word.size() > suf.size() && word.compare(word.size() - suf.size(), suf.size(), suf) == 0) {
+					return true;
+				}
+			}
 			constexpr string_view participle_markers[] = {
 				"ущ", "ющ", "ащ", "ящ", "ем", "им",
 				"нн", "т", "вш", "ш", "ом", "енн"
 			};
 			
-			for (const auto& suf : gerund_suffixes) {
-				if (word.size() > suf.size() && word.compare(word.size() - suf.size(), suf.size(), suf) == 0) {
-					return true;
-				}
-			}
 			for (const auto& mark : participle_markers) {
 				if (word.find(mark) != string_view::npos) {
 					break; 
