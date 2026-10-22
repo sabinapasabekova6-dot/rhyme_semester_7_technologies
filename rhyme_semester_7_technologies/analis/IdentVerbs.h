@@ -4,6 +4,7 @@
 #include <vector>
 
 namespace iverbs{
+	
 using std::string;
 using std::vector;
 
@@ -13,13 +14,6 @@ struct VerbInfo{
 	string ending; // окончание глагола
 	uint8_t score; // "вес" определения того, глагол ли это (от 1 до 100)
 }; 
-
-// Структура для разбора всех слов
-// struct WordInfo{
-// 	string word;
-// 	string ending;
-// 	int score;
-// } WordInfo;
 
 class IdentVerbs {
 public:
@@ -34,7 +28,6 @@ public:
 	// Метод возвращающий только слова с установленным порогом "похожести" на глагол
 	// по умолчанию вес более 50 (от 1 до 100)
 	vector<VerbInfo> ident_verbs(uint8_t min_score = 50); 
-
 	// Доступ для тестов:
     const vector<string>& words() { return sentence_; }
 
