@@ -3,8 +3,6 @@
 #include <cstdint>
 #include <vector>
 
-namespace iverbs{
-	
 using std::string;
 using std::vector;
 
@@ -13,6 +11,7 @@ struct VerbInfo{
 	string stem;   // корень глагола (предположительный)
 	string ending; // окончание глагола
 	uint8_t score; // "вес" определения того, глагол ли это (от 1 до 100)
+	uint64_t num;  // номер предложения из которого взят глагол
 }; 
 
 class IdentVerbs {
@@ -38,6 +37,8 @@ private:
 	bool is_separator(unsigned char ch);
 	// Метод возвращающая структуру слов, содержащихся в переданном предложении src без знаков пунктуации
 	void parse_sentence(const string& src);
+	// Метод определяющий номер предложения из разметки
+	void extract_sentence_num();
 	// Метод приведения одного слова к нижнему регистру
 	void normalize_word(string& word);
 	// Метод нормализации всех слов в структуре класса
@@ -50,7 +51,5 @@ private:
 
 // поля класса:
 	vector<string> sentence_;
-
+	uint64_t num_;
 }; // IdentVerbs
-
-} // namespace iverbs

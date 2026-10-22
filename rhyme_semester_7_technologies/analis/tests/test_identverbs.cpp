@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 #include "IdentVerbs.h"
 
-using namespace iverbs;
-
 namespace {
 
 struct ReportData {
@@ -44,9 +42,10 @@ void run_and_report(const std::string& title,
             }
         }
     }
-
+	// сколько из тех что определены как глаголы, реально глаголов?
     const double precision = (rd.tp + rd.fp) ? double(rd.tp) / (rd.tp + rd.fp) : 0.0;
-    const double recall    = (rd.tp + rd.fn) ? double(rd.tp) / (rd.tp + rd.fn) : 0.0;
+	// сколько из тех глаголов что в тексте, найдено?
+    const double recall = (rd.tp + rd.fn) ? double(rd.tp) / (rd.tp + rd.fn) : 0.0;
 
     std::cout << "\n===== " << title << " =====\n";
     std::cout << "Порог: " << int(threshold) << "   Предложений: " << cases.size() << "\n\n";
@@ -116,12 +115,13 @@ TEST(Parse, DashBetweenWords) {
 }
 
 TEST(Parse, LotsOfSpacesAndDots) {
-    IdentVerbs iv("  ...тут многоточие...  и   пробелы  ");
-    ASSERT_EQ(iv.words().size(), 4u);
-    EXPECT_EQ(iv.words()[0], "тут");
-    EXPECT_EQ(iv.words()[1], "многоточие");
-    EXPECT_EQ(iv.words()[2], "и");
-    EXPECT_EQ(iv.words()[3], "пробелы");
+    IdentVerbs iv("1)  ...тут многоточие...  и   пробелы  ");
+    ASSERT_EQ(iv.words().size(), 5u);
+	EXPECT_EQ(iv.words()[0], "1");
+    EXPECT_EQ(iv.words()[1], "тут");
+    EXPECT_EQ(iv.words()[2], "многоточие");
+    EXPECT_EQ(iv.words()[3], "и");
+    EXPECT_EQ(iv.words()[4], "пробелы");
 }
 
 TEST(Parse, EmptyString) {
