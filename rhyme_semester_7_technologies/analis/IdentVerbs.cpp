@@ -4,7 +4,6 @@
 namespace iverbs {
 	using std::string_view, std::move, std::string, std::size;
 
-	// анонимный namespace для хранение словарей морфем и прочего
 	namespace {
 
 		struct EndingRule { 
@@ -65,7 +64,7 @@ namespace iverbs {
 			{"й", 48}, {"и", 37}, 
 		};
 
-		// -------------------СУФФИКСЫ-----------------------------
+		// ------------------- суффиксы -----------------------------
 		constexpr SuffixRule kSuffixes[] = {
 			{"изирова", 75}, {"изова",   70},   
 			{"ирова",   70}, {"ствова",  65}, 
@@ -130,10 +129,10 @@ namespace iverbs {
 			return false;
 		}
 
-		bool is_participle_or_gerund(string_view word) {
+		bool is_participle(string_view word) {
 			// деепричастия (только однозначные длинные формы)
 			constexpr string_view gerund_endings[] = {
-				"вшись", "авшись", "ившись", "явшись", "евшись", "вши"
+				"вшись", "авшись", "ившись", "явшись", "евшись", "вши", "ясь"
 			};
 			for (const string_view& suf : gerund_endings) {
 				if (word.size() > suf.size() &&
@@ -245,7 +244,7 @@ namespace iverbs {
 		string found_ending = "";
 		string found_suffix = "";
 
-		if (is_participle_or_gerund(sv)) {
+		if (is_participle(sv)) {
 			info.score = 0;
 			return info;
 		}
