@@ -209,7 +209,6 @@ TEST(AnalysisWord, Present) {
 
 TEST(AnalysisWord, NounEndingInL) {
     auto info = IdentVerbs::analysis_word("стол");
-    // окончание "-л" даёт 25 → ниже порога
     EXPECT_LT(info.score, 5);
 }
 
