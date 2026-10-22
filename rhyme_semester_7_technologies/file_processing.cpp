@@ -2,17 +2,6 @@
 using namespace std;
 
 
-struct VerbStruct {
-    string verb1;//глагол1
-    string verb2;//глагол2 
-    // а вместе глагол 1 и глагол 2 образуют рифму!
-    uint64_t num_verb1;//номер предложения где находиться глагол1
-    uint64_t num_verb2;//номер предложения где находиться глагол2
-
-};
-
-vector <VerbStruct>* verbs;
-
 
 
 //запрашиваем имя входного файла с проверками:

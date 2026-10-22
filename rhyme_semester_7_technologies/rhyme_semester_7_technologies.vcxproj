@@ -124,6 +124,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="file_processing.cpp" />
+    <ClCompile Include="result_file.cpp" />
     <ClCompile Include="rhyme_semester_7_technologies.cpp" />
   </ItemGroup>
   <ItemGroup>
