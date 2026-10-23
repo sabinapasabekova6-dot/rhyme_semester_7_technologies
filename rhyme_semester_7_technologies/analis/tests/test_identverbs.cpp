@@ -1,8 +1,6 @@
 #include <gtest/gtest.h>
 #include "IdentVerbs.h"
 
-namespace {
-
 struct ReportData {
     int tp = 0, fp = 0, fn = 0;
     std::vector<std::tuple<std::string, int, int>> detected; // word, score, sentence#
@@ -79,8 +77,6 @@ void run_and_report(const std::string& title,
     std::cout << "Порог                 = " << int(threshold) << "\n";
     std::cout << "=====================================\n";
 }
-
-} // namespace
 
 // проверка корректности парсинга
 
