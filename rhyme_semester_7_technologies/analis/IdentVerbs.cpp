@@ -1,244 +1,66 @@
 #include "IdentVerbs.h"
-#include <iterator> // для size()
+#include "MorphRules.h"
 
-using std::string_view, std::move, std::string, std::size;
+using std::string_view, std::move, std::string;
 
 namespace {
 
-	struct EndingRule { 
-		string_view ending; 
-		uint8_t score;
-	};
-	struct SuffixRule { 
-		string_view suffix; 
-		uint8_t score; 
-	};
-	
-	// ----------------------ОКОНЧАНИЯ----------------------------
-	// Окончания инфинитивов
-	EndingRule kEndingsInfinitive[] = {
-		{"ться", 100}, {"тись", 100}, {"ать", 100},
-		{"ять", 99}, {"ить", 100}, {"еть", 98},
-		{"оть", 78}, {"уть", 99}, {"ыть", 94},
-		{"ть", 78},	{"ти", 13}, {"чь", 90},
-	};
+	// Универсальный поиск самого длинного (а при равной длине - самого
+	// весомого) правила, которым заканчивается слово
+	// Возвращает указатель на лучшее правило либо best (если ничего не нашли).
+	// Параметры:
+	//     word  - слово, в котором ищем окончание/суффикс;
+	//     table - таблица правил (окончания или суффиксы);
+	//     best  - текущий лучший результат (для последовательного вызова
+	//             по нескольким таблицам; при первом вызове - nullptr).
+	const MorphemeRule* try_rule_table(string_view word,
+									const vector<MorphemeRule>& table,
+									const MorphemeRule* best) {
+		size_t word_s = word.size();
+		for (const MorphemeRule& rule : table) {
+			size_t rule_s = rule.text.size();
+			if (word_s <= rule_s) continue; // слово не длиннее правила
+			if (word.compare(word_s - rule_s, rule_s, rule.text) != 0) continue; // не совпало
+			if (!best
+				|| rule_s > best->text.size()
+				|| (rule_s == best->text.size() && rule.score > best->score)) {
+				best = &rule;
+			}
+		}
+		return best;
+	}
 
-	// Окончания возвратных форм глаголов
-	EndingRule kEndingsReflexive[] = {
-		{"лись", 100}, {"лась", 100}, {"лось", 100},
-		{"лся", 100}, {"ешься", 100}, {"ишься", 100},
-		{"етесь", 100},	{"итесь", 100}, {"ется", 100},
-		{"ится", 100}, {"емся", 100}, {"имся", 100},
-		{"утся", 100}, {"ются", 100}, {"атся", 100},
-		{"ятся", 100}, {"усь", 99}, {"юсь", 100},
-		{"йся", 98}, {"ись", 100}, {"ся", 99}, 
-		{"сь", 100},
-	};
-
-	// Окончание глаголов прошедшего времени
-	EndingRule kEndingsPast[] = {
-		{"или", 99}, {"ила", 97}, {"ило", 99}, 
-		{"ил", 96}, {"али", 99}, {"ала", 97}, 
-		{"ало", 100}, {"ал", 96}, {"яли", 100},
-		{"яла", 100}, {"яло", 99}, {"ял", 99},
-		{"ели", 53}, {"ела", 90}, {"ело", 96},
-		{"ел", 85}, {"ули", 94}, {"ула", 86},
-		{"уло", 99},{"ул", 87}, {"ли", 93}, 
-		{"ла", 93}, {"ло", 98}, {"л", 90}
-	};
-
-	// Окончания глаголов настоящего и прошедшего времени
-	EndingRule kEndingsPresent[] = {
-		{"ешь", 100}, {"ишь", 100}, {"ете", 97},
-		{"ите", 88}, {"ет", 95}, {"ит", 83},
-		{"ем", 72}, {"им", 77}, {"ут", 94},
-		{"ют", 100}, {"ат", 41}, {"ят", 97},
-		{"ю", 46}, {"у", 37} 
-	};
-
-	// Окончания повелительного наклонения глаголов
-	EndingRule kEndingsImperative[] = {
-		{"йте", 100}, {"ите", 88}, {"ай", 98}, 
-		{"ей", 68}, {"уй", 98}, {"ой", 24}, 
-		{"й", 48}, {"и", 37}, 
-	};
-
-	// ------------------- суффиксы -----------------------------
-	SuffixRule kSuffixes[] = {
-		{"изирова", 75}, {"изова", 70},   
-		{"ирова", 70}, {"ствова", 65}, 
-		{"ествова", 65}, {"нича", 55},   			
-		{"ича", 50}, {"ива", 50},
-		{"ыва", 50}, {"ова", 45},   
-		{"ева", 45}, {"ну", 35},   
-		{"ва", 25},   
-	};
-
-	// Черный список частых существительных/прилагательных, которые маскируются под глаголы
-	bool is_in_blacklist(string_view word) {
-		string_view blacklist[] = {
-			// местоимения
-			"ней","нею","ним","ними","них", "нем", 
-			"меня","тебя","себя","мною","тобою","собою",
-			"его","ему","ей","ею","кем","чем","никем","ничем","коем",
-			"тем","том","сём","всём","всем","этом",
-			"моей","твоей","своей","нашей","вашей",
-			"моем","твоем","своем","нашем","вашем",
-			"моим","твоим","своим","нашим","вашим",
-			"мою","твою","свою","нашу","вашу",
-			"мной","тобой","собой",
-			"этой","той","всей","самой",
-			"этим","тем","всем","самым",
-			"эту","ту","всю","саму",
-
-			// наречия
-			"тут","там","затем","потом","зачем","почем","нипочём",
-			"отчего","почему","засим","чуть","едва",
-
-			// предлоги
-			"около","возле","подле","после","кроме","между","пред","перед",
-
-			// частицы, союзы, вводные 
-			"нет","да","ну","вот","ведь","мол","бишь", "или", "ли",
-
-			// краткие прилагательные
-			"мал", "стар", "молод", "холод", "голод", "светел", "тепел",
-			"бел", "зол", "смел", "весел", "гол", "стол",
-
-			// существительные
-			"дело","тело","мыло","крыло","весло","полотно","зеркало",
-			"стекло","масло","сало","шило","рыло","жало","помело",
-			"правило","слово","покрывало","золото","серебро","молоко","долото",
-
-
-			"людей","детей","матерей","дочерей","дверей","зверей",
-			"царей","князей","бурей","пустыней","тучей","дачей",
-			"встречей","ночей","печей","речей","мечей","ручей",
-
-			// прочее
-			"сон","свет","гранит","банкет","билет","скелет",
-			"вид","род","лад","нос",
-			"пять","шесть","девять","десять","двадцать","тридцать",
-			"крем","причем",
-			"зал","бал","вал","нал","мил","бил","лил",
-			"синим","синем","синего","синие","синих","синими","синей","синюю",
-			"тепло", "весело"
-			// TODO: вопрос винительного падежа открыт
-		};
-		for (string_view w : blacklist)
+	// Проверка "слово в чёрном списке".
+	bool is_in_blacklist(string_view word, const vector<string>& blacklist) {
+		for (const string& w : blacklist)
 			if (word == w) return true;
 		return false;
 	}
 
-	// Основа (после отрезания окончания) оканчивается на именной суффикс
-	// Обратная идея, поиск не глагольных частей
-	bool has_nominal_suffix(string_view word) {
-		string_view markers[] = {
-			"тель", // учитель
-			"ник", // работник
-			"чик", // лётчик
-			"щик", // наборщик
-			"ость", // радость
-			"есть", // свежесть
-			"изм", // коммунизм
-			"ист", // артист
-			"ств", // царство
-			"тельств", // правительство
-			"атор", // оратор
-			"итор", // кредитор
-		};
-		for (string_view m : markers) {
-			if (word.size() > m.size() &&
-				word.compare(word.size() - m.size(), m.size(), m) == 0)
-				return true;
+	// Проверяет, оканчивается ли word на suf
+	// Возвращает true, если word длиннее suf и последние suf.size()
+	// байт word совпадают с suf
+	bool ends_with(string_view word, string_view suf) {
+		if (word.size() <= suf.size()) return false; // слово не длиннее суффикса
+		return word.compare(word.size() - suf.size(), suf.size(), suf) == 0;
+	}
+
+	// Проверка "основа оканчивается на именной суффикс"
+	bool has_nominal_suffix(string_view word, const vector<string>& suffixes) {
+		for (const string& m : suffixes) {
+			if (ends_with(word, m)) return true;
 		}
 		return false;
 	}
 
-	bool is_participle(string_view word) {
-		// деепричастия (только однозначные длинные формы)
-		string_view gerund_endings[] = {
-			"вшись", "авшись", "ившись", "явшись", "евшись", "вши", "ясь"
-		};
-		for (string_view suf : gerund_endings) {
-			if (word.size() > suf.size() &&
-				word.compare(word.size() - suf.size(), suf.size(), suf) == 0)
-				return true;
-		}
-
-		// причастия (все падежные формы прилагательного типа)
-		string_view participle_endings[] = {
-			// действительные наст. вр. (-ущ/-ющ/-ащ/-ящ)
-			"ущий","ущая","ущее","ущие","ущего","ущей","ущему","ущим","ущем","ущих","ущими","ущую",
-			"ющий","ющая","ющее","ющие","ющего","ющей","ющему","ющим","ющем","ющих","ющими","ющую",
-			"ащий","ащая","ащее","ащие","ащего","ащей","ащему","ащим","ащем","ащих","ащими","ащую",
-			"ящий","ящая","ящее","ящие","ящего","ящей","ящему","ящим","ящем","ящих","ящими","ящую",
-			// действительные прош. вр. (-вш), включая возвратные
-			"вший","вшая","вшее","вшие","вшего","вшей","вшему","вшим","вшем","вших","вшими","вшую",
-			"вшийся","вшаяся","вшееся","вшиеся","вшегося","вшейся","вшемуся","вшимся",
-			"вшемся","вшихся","вшимися","вшуюся",
-			// страдательные наст. вр. (-ем/-им)
-			"емый","емая","емое","емые","емого","емой","емому","емым","емом","емых","емыми","емую",
-			"имый","имая","имое","имые","имого","имой","имому","имым","имом","имых","имыми","имую",
-			// страдательные прош. вр. (-нн/-енн/-т)
-			"нный","нная","нное","нные","нного","нной","нному","нным","нном","нных","нными","нную",
-			"енный","енная","енное","енные","енного","енной","енному","енным","енном","енных","енными","енную",
-			"тый","тая","тое","тые","того","той","тому","тым","том","тых","тыми","тую",
-			// прилагательные на -нний (та же идея, тоже не глаголы)
-			"нний","нняя","ннее","нние","ннего","нней","ннему","нним","ннем","нних","нними","ннюю",
-		};
-		for (string_view end : participle_endings) {
-			if (word.size() > end.size() &&
-				word.compare(word.size() - end.size(), end.size(), end) == 0)
-				return true;
-		}
-		return false;
+	// Проверка "слово - деепричастие/причастие"
+	bool is_participle(string_view word, const vector<string>& gerunds, const vector<string>& participles) {
+		for (const string& s : gerunds) 
+			if (ends_with(word, s)) return true;
+    	for (const string& s : participles) 
+			if (ends_with(word, s)) return true;
+    	return false;
 	}
-
-	const EndingRule* try_ending_table(string_view word, const EndingRule* table,
-										size_t n, const EndingRule* best) {
-		size_t word_s = word.size(); // длина слова в байтах
-		for (size_t i = 0; i < n; ++i) {
-			const EndingRule& rule = table[i];
-			size_t rule_end_s = rule.ending.size(); // длина окончания из словаря в байтах
-
-			// если длина слова <= длине окончания из словаря
-			if (word_s <= rule_end_s) 
-				continue;
-			// если окончания не совпадают
-			if (word.compare(word_s - rule_end_s, rule_end_s, rule.ending) != 0)
-				continue;
-			// если лучший не определен или длина найденного окончания больше или
-			// если длина совпадает, но score больше
-			if (!best || rule_end_s > best->ending.size() ||
-				(rule_end_s == best->ending.size() && rule.score > best->score)) {
-				best = &rule;
-			}
-		}
-		return best;
-	}
-
-	// Функция поиска суффикса (аналог try_ending_table)
-	const SuffixRule* try_suffix_table(string_view word, const SuffixRule* table,
-									size_t n, const SuffixRule* best) {
-		size_t word_s = word.size();
-		for (size_t i = 0; i < n; ++i) {
-			const SuffixRule& rule = table[i];
-			size_t rule_suf_s = rule.suffix.size();
-			if (word_s <= rule_suf_s) continue;
-			
-			// если суффикс не совпадает с концом слова
-			if (word.compare(word_s - rule_suf_s, rule_suf_s, rule.suffix) != 0) continue;
-			
-			// берем самый длинный суффикс (или с большим score, если длина равна)
-			if (!best || rule_suf_s > best->suffix.size() ||
-				(rule_suf_s == best->suffix.size() && rule.score > best->score)) {
-				best = &rule;
-			}
-		}
-		return best;
-	}
-
 }
 
 IdentVerbs::IdentVerbs(const string& src) {
@@ -254,60 +76,71 @@ IdentVerbs::IdentVerbs(const string& src) {
 //				  = 5 - идентифицировать не вышло, вероятно не глагол
 //                = <число> - найдено некоторое совпадение
 VerbInfo IdentVerbs::analysis_word(const string& word) {
-	VerbInfo info;
-	info.verb = word;
-	if (!is_cyrillic_word(word) || word.size() < 4) {
-		info.score = 0;
-		return info;
-	}
-	// Проверка по черному списку
-	if (is_in_blacklist(word)) {
-		info.score = 0;
-		return info;
-	}
-	
-	string_view sv = word; // Будем "обрезать" слово справа налево
-	uint32_t total_score = 0;
-	string found_ending = "";
-	string found_suffix = "";
+    // Один раз за вызов получаем ссылку на общий словарь.
+    const MorphRules& rules = MorphRules::instance();
 
-	if (is_participle(sv)) {
-		info.score = 0;
-		return info;
-	}
+    VerbInfo info;
+    info.verb = word;
 
-	// Ищем самое длинное окончание таблицах
-	const EndingRule* best_end = nullptr;
-	best_end = try_ending_table(sv, kEndingsInfinitive, size(kEndingsInfinitive), best_end);
-	best_end = try_ending_table(sv, kEndingsReflexive,  size(kEndingsReflexive),  best_end);
-	best_end = try_ending_table(sv, kEndingsPast,       size(kEndingsPast),       best_end);
-	best_end = try_ending_table(sv, kEndingsPresent,    size(kEndingsPresent),    best_end);
-	best_end = try_ending_table(sv, kEndingsImperative, size(kEndingsImperative), best_end);
-	if (!best_end) {
-		info.score = 5; // не нашли окончания
-		return info;
-	}
+    // слишком короткое или не кириллица - точно не наш случай
+    if (!is_cyrillic_word(word) || word.size() < 4) {
+        info.score = 0;
+        return info;
+    }
 
-	// Отрезаем найденное окончание
-	sv.remove_suffix(best_end->ending.size());
-	found_ending = string(best_end->ending);
-	total_score += best_end->score;
+    // чёрный список
+    if (is_in_blacklist(word, rules.blacklist)) {
+        info.score = 0;
+        return info;
+    }
 
-	if (has_nominal_suffix(sv)) { info.score = 0; return info; }
+    string_view sv = word; // рабочая обрезаемая копия
+    uint32_t total_score = 0;
+    string found_ending;
+    string found_suffix;
 
-	const SuffixRule* best_suf = try_suffix_table(sv, kSuffixes, size(kSuffixes), nullptr);
+    // причастия/деепричастия — не глаголы
+    if (is_participle(sv, rules.gerundSuffixes, rules.participleSuffixes)) {
+        info.score = 0;
+        return info;
+    }
 
-	if (best_suf) {
-		sv.remove_suffix(best_suf->suffix.size());
-		found_suffix = string(best_suf->suffix);
-		total_score += best_suf->score;
-	}
-	
-	info.stem = string(sv);
-	info.ending = found_suffix + found_ending;
-	info.score = static_cast<uint8_t>(std::min(total_score, 100u));
+    // ищем самое длинное окончание по всем пяти таблицам сразу
+    const MorphemeRule* best_end = nullptr;
+    best_end = try_rule_table(sv, rules.endingsInfinitive, best_end);
+    best_end = try_rule_table(sv, rules.endingsReflexive,  best_end);
+    best_end = try_rule_table(sv, rules.endingsPast,       best_end);
+    best_end = try_rule_table(sv, rules.endingsPresent,    best_end);
+    best_end = try_rule_table(sv, rules.endingsImperative, best_end);
 
-	return info;
+    // таблицы пусты (нет lib/) или ни одно окончание не подошло
+    if (!best_end) {
+        info.score = 5;        // «вероятно не глагол»
+        return info;
+    }
+
+    // отрезаем найденное окончание
+    sv.remove_suffix(best_end->text.size());
+    found_ending = best_end->text;
+    total_score += best_end->score;
+
+    if (has_nominal_suffix(sv, rules.suffixesNominal)) {
+        info.score = 0;
+        return info;
+    }
+
+    // ищем глагольный суффикс в остатке
+    const MorphemeRule* best_suf = try_rule_table(sv, rules.suffixesVerbal, nullptr);
+    if (best_suf) {
+        sv.remove_suffix(best_suf->text.size());
+        found_suffix = best_suf->text;
+        total_score += best_suf->score;
+    }
+
+    info.stem   = string(sv);
+    info.ending = found_suffix + found_ending;
+    info.score  = static_cast<uint8_t>(std::min<uint32_t>(total_score, 100u));
+    return info;
 }
 
 // Метод анализирующий и возвращающий статистику по всем словам предложения 
@@ -393,6 +226,7 @@ void IdentVerbs::extract_sentence_num() {
     uint64_t val = 0;
     for (char ch : first) {
         if (ch < '0' || ch > '9') return; // не число, значит оставляем 0, слово не трогаем
+		val = val * 10 + static_cast<uint64_t>(ch - '0');
     }
     num_ = val;
     sentence_.erase(sentence_.begin());

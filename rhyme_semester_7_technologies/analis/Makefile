@@ -10,9 +10,13 @@ test_rhymes: RhymesAnalysis.cpp tests/test_rhymes.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST)
 	./test_rhymes
 
-test_identverbs: IdentVerbs.cpp tests/test_identverbs.cpp
+test_identverbs: IdentVerbs.cpp MorphRules.cpp tests/test_identverbs.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST)
 	./test_identverbs
+
+test_diagnostic: IdentVerbs.cpp MorphRules.cpp tests/test_diagnostic.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST)
+	./test_diagnostic
 
 # запуск всех тестов подряд
 test: test_rhymes test_identverbs
@@ -23,4 +27,4 @@ test: test_rhymes test_identverbs
 	./test_identverbs
 
 clean:
-	rm -f test_rhymes test_identverbs
+	rm -f test_rhymes test_identverbs test_diagnostic

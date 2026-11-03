@@ -21,17 +21,6 @@ string_view trim(string_view s) {
     return s;
 }
 
-// Функция готовит строку к разбору
-// Параметры:
-//		 line строка, полученная из getline (копируется)
-// Возвращаемые значения: 
-// 		 отредактированная строка
-string strip_line(string line) {
-    if (!line.empty() && line.back() == '\r')
-        line.pop_back();
-    return line;
-}
-
 // Функция преобразующая строку из цифр в число 0..100.
 // Параметры:
 //		s - строка с числом
@@ -72,7 +61,7 @@ bool read_scored_sections(const string& path, map<string, vector<MorphemeRule>>&
     vector<MorphemeRule>* target = nullptr; // указатель на текущую секцию
 
     while (getline(f, line)) { // построчно читаем весь файл
-        string_view sv = trim(strip_line(line)); // чистим \r и пробелы
+        string_view sv = trim(line); // чистим \r и пробелы
         if (sv.empty() || sv.front() == '#') continue; // пусто или комментарий
 
         if (sv.front() == '[') { // встретили начало новой секции
@@ -120,7 +109,7 @@ bool read_word_sections(const string& path, map<string, vector<string>>& out) {
     vector<string>* target = nullptr; // текущая секция
 
     while (getline(f, line)) { // построчно
-        string_view sv = trim(strip_line(line)); // чистим строку
+        string_view sv = trim(line); // чистим строку
         if (sv.empty() || sv.front() == '#') continue; // пусто/комментарий
 
         if (sv.front() == '[') { // начало секции
@@ -153,7 +142,7 @@ bool read_word_list(const string& path, vector<string>& out) {
     string line; // буфер строки
 
     while (getline(f, line)) { // построчно
-        string_view sv = trim(strip_line(line)); // чистим строку
+        string_view sv = trim(line); // чистим строку
         if (sv.empty() || sv.front() == '#') continue; // пусто или комментарий
         out.push_back(string(sv)); // сохраняем слово
         any = true; // отметили прочитанное
@@ -244,7 +233,7 @@ const MorphRules& MorphRules::instance() {
     static MorphRules rules; // сам словарь
     static bool loaded = false; // проверка, загружался ли словарь ранее
 
-    if (!loaded) { // при первом вызове - грузим из файлов
+    if (!loaded) { // при первом вызове - грузим из
         rules.load_from_lib();
         loaded = true;
     }
