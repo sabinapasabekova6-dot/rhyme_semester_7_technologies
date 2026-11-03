@@ -43,7 +43,7 @@ void run_and_report(const std::string& title,
 	// сколько из тех что определены как глаголы, реально глаголов?
     const double precision = (rd.tp + rd.fp) ? double(rd.tp) / (rd.tp + rd.fp) : 0.0;
 	// сколько из тех глаголов что в тексте, найдено?
-    const double recall = (rd.tp + rd.fn) ? double(rd.tp) / (rd.tp + rd.fn) : 0.0;
+    // const double recall = (rd.tp + rd.fn) ? double(rd.tp) / (rd.tp + rd.fn) : 0.0;
 
     std::cout << "\n===== " << title << " =====\n";
     std::cout << "Порог: " << int(threshold) << "   Предложений: " << cases.size() << "\n\n";
@@ -73,7 +73,7 @@ void run_and_report(const std::string& title,
     std::cout << "FP (нашёл не глагол)  = " << rd.fp << "\n";
     std::cout << "FN (пропустил глагол) = " << rd.fn << "\n";
     std::cout << "Точность (precision)  = " << std::fixed << std::setprecision(3) << precision << "\n";
-    std::cout << "Полнота (recall)      = " << std::fixed << std::setprecision(3) << recall << "\n";
+    // std::cout << "Полнота (recall)      = " << std::fixed << std::setprecision(3) << recall << "\n";
     std::cout << "Порог                 = " << int(threshold) << "\n";
     std::cout << "=====================================\n";
 }
