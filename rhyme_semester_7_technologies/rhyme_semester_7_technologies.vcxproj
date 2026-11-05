@@ -123,7 +123,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="file_processing.cpp" />
+    <ClCompile Include="result_file.cpp" />
     <ClCompile Include="rhyme_semester_7_technologies.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Total_Header.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
