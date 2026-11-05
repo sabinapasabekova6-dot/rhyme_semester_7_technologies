@@ -31,4 +31,4 @@ test: test_rhymes test_identverbs
 	./test_identverbs
 
 clean:
-	rm -f test_rhymes test_identverbs test_diagnostic
+	rm -f test_rhymes test_identverbs test_diagnostic test_rhymes_precision
