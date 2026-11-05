@@ -1,5 +1,8 @@
 #include "IdentVerbs.h"
 #include "MorphRules.h"
+#include <cctype>
+#include <algorithm>
+#include <utility>
 
 using std::string_view, std::move, std::string;
 

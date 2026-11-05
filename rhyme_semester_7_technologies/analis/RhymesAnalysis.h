@@ -1,5 +1,7 @@
 #pragma once
 #include "IdentVerbs.h"
+#include <string_view> 
+#include <cctype> 
 
 using namespace std;
 
