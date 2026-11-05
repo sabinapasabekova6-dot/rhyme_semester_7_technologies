@@ -151,14 +151,202 @@ size_t common_suffix_len(string_view a, string_view b) {
 //   common == min_len  ->  1.0 (одна строка — суффикс другой)
 //   common == 0        ->  0.0
 double similarity(string_view phonetic_a, string_view phonetic_b) {
-    if (phonetic_a.empty() || phonetic_b.empty()) return 0.0;
+    if (phonetic_a.empty() || phonetic_b.empty()) {
+        return 0.0;
+    }
 
     size_t ca = count_chars(phonetic_a);
     size_t cb = count_chars(phonetic_b);
-    size_t min_c = min(ca, cb);
-    if (min_c == 0) return 0.0;
-
+    size_t min_c = ca;
+    if (cb < min_c) {
+        min_c = cb;
+    }
+    if (min_c == 0) {
+        return 0.0;
+    }
     size_t common = common_suffix_len(phonetic_a, phonetic_b);
-	double res = static_cast<double>(common) / static_cast<double>(min_c);
+    double res = static_cast<double>(common) / static_cast<double>(min_c);
     return res;
+}
+
+
+// Проверяет, есть ли уже такая пара в результате (для дедупликации).
+// Ключ нормализуется: меньший номер и меньшее слово идут первыми.
+bool is_duplicate(const vector<VerbStruct>& result,
+					uint64_t kn1, uint64_t kn2,
+					const string& kw1, const string& kw2){
+	for (size_t k = 0; k < result.size(); ++k) {
+		uint64_t rn1 = result[k].num_verb1;
+		uint64_t rn2 = result[k].num_verb2;
+		if (rn1 > rn2) {
+			uint64_t t = rn1;
+			rn1 = rn2;
+			rn2 = t;
+		}
+		string rw1 = result[k].verb1;
+		string rw2 = result[k].verb2;
+		if (rw1 > rw2) {
+			string t = rw1;
+			rw1 = rw2;
+			rw2 = t;
+		}
+		if (rn1 == kn1 && rn2 == kn2 && rw1 == kw1 && rw2 == kw2) {
+			return true;
+		}
+	}
+	return false;
+}
+
+uint64_t extract_sentence_num(string_view& body) {
+	size_t i = 0;
+	while (i < body.size()) {
+		unsigned char c = static_cast<unsigned char>(body[i]);
+		if (!isspace(c)) {
+			break;
+		}
+		++i;
+	}
+
+	size_t start = i;
+	while (i < body.size()) {
+		if (body[i] < '0' || body[i] > '9') {
+			break;
+		}
+		++i;
+	}
+
+	if (i == start) {
+		return 0;
+	}
+
+	// Если после цифр идёт буква, это не номер
+	if (i < body.size()) {
+		unsigned char c = static_cast<unsigned char>(body[i]);
+		if (isalpha(c)) {
+			return 0;
+		}
+	}
+
+	uint64_t val = 0;
+	for (size_t k = start; k < i; ++k) {
+		val = val * 10 + static_cast<uint64_t>(body[k] - '0');
+	}
+
+	// Пропускаем пунктуацию сразу после номера
+	while (i < body.size()) {
+		char c = body[i];
+		if (c == '.' || c == ')' || c == ':' || c == ',' || c == '-') {
+			++i;
+		} else {
+			break;
+		}
+	}
+
+	body = body.substr(i);
+	return val;
+}
+
+double rhyme_similarity(const VerbInfo& w1, const VerbInfo& w2) {
+	if (w1.verb.empty() || w2.verb.empty()) {
+		return 0.0;
+	}
+	string p1 = to_phonetic(w1.verb);
+	string p2 = to_phonetic(w2.verb);
+	double res = similarity(p1, p2);
+	return res;
+}
+
+bool is_rhyme(const VerbInfo& w1, const VerbInfo& w2,
+				double min_similarity)
+{
+	double sim = rhyme_similarity(w1, w2);
+	if (sim >= min_similarity) {
+		return true;
+	}
+	return false;
+}
+
+
+// Ищет пары рифмующихся глаголов в списке предложений.
+vector<VerbStruct> find_rhymes(
+    const vector<string>& sentences,
+    uint8_t min_verb_score,
+    double min_similarity)
+{
+    vector<VerbStruct> result;
+    if (sentences.empty()) {
+        return result;
+    }
+
+    // Собираем все глаголы из всех предложений
+    vector<VerbInfo> all_verbs;
+    for (size_t i = 0; i < sentences.size(); ++i) {
+        string_view body = sentences[i];
+        uint64_t num = extract_sentence_num(body);
+        string body_str(body);
+        if (body_str.empty()) {
+            continue;
+        }
+
+        IdentVerbs iv(body_str);
+        vector<VerbInfo> verbs = iv.ident_verbs(min_verb_score);
+        for (size_t k = 0; k < verbs.size(); ++k) {
+            verbs[k].num = num;
+            all_verbs.push_back(verbs[k]);
+        }
+    }
+
+    if (all_verbs.size() < 2) {
+        return result;
+    }
+
+    // Кэшируем фонетические формы, чтобы не считать их повторно
+    vector<string> phon(all_verbs.size());
+    for (size_t i = 0; i < all_verbs.size(); ++i) {
+        phon[i] = to_phonetic(all_verbs[i].verb);
+    }
+
+    // Перебираем пары (i < j) и добавляем без дублей
+    for (size_t i = 0; i < all_verbs.size(); ++i) {
+        for (size_t j = i + 1; j < all_verbs.size(); ++j) {
+            double sim = similarity(phon[i], phon[j]);
+            if (sim < min_similarity) {
+                continue;
+            }
+
+            uint64_t n1 = all_verbs[i].num;
+            uint64_t n2 = all_verbs[j].num;
+            string w1 = all_verbs[i].verb;
+            string w2 = all_verbs[j].verb;
+
+            // Нормализованный ключ для проверки дубля
+            uint64_t kn1 = n1;
+            uint64_t kn2 = n2;
+            if (kn1 > kn2) {
+                uint64_t t = kn1;
+                kn1 = kn2;
+                kn2 = t;
+            }
+            string kw1 = w1;
+            string kw2 = w2;
+            if (kw1 > kw2) {
+                string t = kw1;
+                kw1 = kw2;
+                kw2 = t;
+            }
+
+            bool dup = is_duplicate(result, kn1, kn2, kw1, kw2);
+            if (dup) {
+                continue;
+            }
+
+            VerbStruct vs;
+            vs.verb1 = w1;
+            vs.verb2 = w2;
+            vs.num_verb1 = n1;
+            vs.num_verb2 = n2;
+            result.push_back(vs);
+        }
+    }
+    return result;
 }
