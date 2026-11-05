@@ -10,6 +10,10 @@ test_rhymes: RhymesAnalysis.cpp tests/test_rhymes.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST)
 	./test_rhymes
 
+test_rhymes_precision: RhymesAnalysis.cpp tests/test_rhymes_precision.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST)
+	./test_rhymes_precision
+
 test_identverbs: IdentVerbs.cpp MorphRules.cpp tests/test_identverbs.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(GTEST)
 	./test_identverbs

@@ -6,7 +6,7 @@ using namespace std;
 // Привести слово к фонетической записи
 string to_phonetic(string_view word);
 
-// Длина общего суффикса (с конца) в байтах/фонемах
+// Длина общего суффикса (с конца) в символах
 size_t common_suffix_len(string_view a, string_view b);
 
 // Коэффициент схожести 0...1 (на фонетических строках)
