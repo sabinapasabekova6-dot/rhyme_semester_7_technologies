@@ -82,7 +82,7 @@ VerbInfo IdentVerbs::analysis_word(const string& word) {
     // Один раз за вызов получаем ссылку на общий словарь.
     const MorphRules& rules = MorphRules::instance();
 
-    VerbInfo info;
+    VerbInfo info{};
     info.verb = word;
 
     // слишком короткое или не кириллица - точно не наш случай
