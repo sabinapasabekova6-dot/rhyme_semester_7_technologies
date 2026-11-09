@@ -50,6 +50,9 @@ size_t count_chars(string_view s);
 
 // };
 
+#ifndef VERBSTRUCT_DEFINED
+#define VERBSTRUCT_DEFINED
+
 // Пара рифмующихся глаголов.
 struct VerbStruct {
     string   verb1;       // первый глагол

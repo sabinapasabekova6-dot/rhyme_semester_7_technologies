@@ -2,6 +2,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <cstdint>
 #include <vector>
 #include <windows.h>   
 using namespace std;
@@ -40,11 +41,15 @@ void flushSentence(ofstream& outputFile, string& currentSentence, int& sentenceN
 void writeNumberedSentences(const string& inputFileName);
 
 
+
+vector<string> readNumberedSentences(const string& filename);
 //ДЛЯ resilt_file.cpp
 
 
 // СТРУКТУРЫ ДАННЫХ
 
+#ifndef VERBSTRUCT_DEFINED
+#define VERBSTRUCT_DEFINED
 
 // структура которую заполняет серега
 struct VerbStruct {

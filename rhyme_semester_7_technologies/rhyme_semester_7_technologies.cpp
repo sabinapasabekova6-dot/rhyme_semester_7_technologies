@@ -4,40 +4,57 @@
 #include <fstream>
 #include <iostream>
 #include <windows.h>   
-#include "Total_Header.h"  
-using namespace std;
+#include "Total_Header.h"        // ваша часть: VerbStruct, RhymeStats, processRhymes...
+#include "RhymesAnalysis.h"      // часть коллеги: find_rhymes, VerbInfo, IdentVerbs...
 
 int main() {
     setlocale(LC_ALL, "Russian");
     SetConsoleCP(1251);
     SetConsoleOutputCP(1251);
-    //получаем название входного файла
+
+    cout << "Анализ рифмующихся глаголов\n\n";
+
+    // запрос имени входного файла (проверки: не пусто, открывается, не пустой)
     string path = requestValidInputFile();
 
-    //создаём файл с пронумерованными предложениями
+    // разбиение текста на предложения с нумерацией
+    // Результат сохраняется в файл "<path>_numbered_sentences.txt"
     writeNumberedSentences(path);
-   
 
-    //чтото вроде заглушки 
-    vector<VerbStruct>* verbs = new vector<VerbStruct>();
-    verbs->push_back({ "Косить", "пить", 1, 1 });
-    verbs->push_back({ "Брить", "пить", 4, 4 });
-    verbs->push_back({ "Брить", "пить", 4, 5 });
-    verbs->push_back({ "Брить", "стелить", 1, 1 });
-    verbs->push_back({ "Орать", "кричать ", 1, 1 });
-    verbs->push_back({ "Бесить", "месить", 4, 4 });
-    verbs->push_back({ "Бесить", "месить", 5, 5 });
+    // читаем этот файл обратно в вектор строк
+    // Каждая строка имеет вид "N) текст предложения"
+    string numberedPath = buildNumberedSentencesFileName(path);
+    vector<string> sentences = readNumberedSentences(numberedPath);
 
-    vector<RhymeStats> stats = processRhymes(verbs);
-    path = path + "_resilt_file";
-    writeToFile(stats, path);
-    verbs = nullptr;
+    if (sentences.empty()) {
+        cout << "Не удалось прочитать предложения для анализа.\n";
+        return 1;
+    }
 
+    cout << "\nПредложений для анализа: " << sentences.size() << "\n";
+    cout << "Ищем пары рифмующихся глаголов (может занять время)...\n";
 
-    // создаем выходной файл с информацией об рифмах 
+    //ищем пары рифмующихся глаголов (функция коллеги)
+    //   min_verb_score = 50  — минимальный вес, чтобы слово считалось глаголом
+    //   min_similarity = 0.5 — минимальный коэффициент фонетической схожести
+    vector<VerbStruct> verbs = find_rhymes(sentences, 50, 0.5);
+
+    cout << "Найдено пар-кандидатов: " << verbs.size() << "\n";
+
+    if (verbs.empty()) {
+        cout << "Рифмующихся пар не найдено. Завершение работы.\n";
+        return 0;
+    }
+
+    //строим статистику по найденным парам (ваша функция)
+    //   processRhymes принимает УКАЗАТЕЛЬ — передаём адрес вектора
+    vector<RhymeStats> stats = processRhymes(&verbs);
+
+    // пишем результат в файл
+    //   имя: "<path>_result_file.txt" (исправлена опечатка "resilt")
+    string outputPath = path + "_result_file.txt";
+    writeToFile(stats, outputPath);
+
+    cout << "Готово.\n";
     return 0;
 }
-
-
-
-

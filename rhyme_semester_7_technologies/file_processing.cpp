@@ -72,9 +72,18 @@ string buildNumberedSentencesFileName(const string& inputFileName) {
 
 // проверяет, является ли символ русской буквой.
 bool isLetterChar(char ch) {
-    unsigned char c = (unsigned char)ch; // переводим в unsigned, чтобы сравнения работали правильно
-    if (c >= 0xC0 && c <= 0xFF) return true;  // русские буквы А-Я, а-я
-    if (c == 0xA8 || c == 0xB8) return true;  // буквы Ё и ё
+    unsigned char c = (unsigned char)ch;
+
+    // 1) ASCII-буквы: A-Z, a-z
+    if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) return true;
+
+    // 2) UTF-8 continuation byte — вторая половина русской буквы в UTF-8
+    if (c >= 0x80 && c <= 0xBF) return true;
+
+    // 3) CP1251: А-Я (0xC0..0xDF), а-я (0xE0..0xFF), Ё (0xA8), ё (0xB8)
+    if (c >= 0xC0 && c <= 0xFF) return true;
+    if (c == 0xA8 || c == 0xB8) return true;
+
     return false;
 }
 
@@ -219,4 +228,33 @@ void writeNumberedSentences(const string& inputFileName) {
     outputFile.close();
 
     cout << "Файл \"" << outputFileName << "\" создан. Найдено предложений: " << sentenceNumber << "\n";
+}
+
+vector<string> readNumberedSentences(const string& filename) {
+    vector<string> result;
+
+    ifstream f(filename.c_str());
+    if (!f.is_open()) {
+        cout << "Ошибка: не удалось открыть файл \"" << filename << "\" для чтения.\n";
+        return result;
+    }
+
+    string line;
+    bool headerSkipped = false;
+
+    while (getline(f, line)) {
+        // пустые строки пропускаем
+        if (line.empty()) continue;
+
+        // первая непустая строка — заголовок, её пропускаем один раз
+        if (!headerSkipped) {
+            headerSkipped = true;
+            continue;
+        }
+
+        result.push_back(line);
+    }
+
+    f.close();
+    return result;
 }
