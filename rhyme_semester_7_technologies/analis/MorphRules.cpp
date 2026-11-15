@@ -54,7 +54,10 @@ bool parse_score(string_view s, uint8_t& out) {
 //   	false - файл не открылся или правил не найдено
 bool read_scored_sections(const string& path, map<string, vector<MorphemeRule>>& out) {
     ifstream f(path); // открываем файл на чтение
-    if (!f) return false; // не открылся
+    if (!f) {
+        printf("Не удалось открыть файл: %s\n", path.c_str());
+        return false; // не открылся
+    }
 
     bool any = false; // был ли хотя бы один валидный правило
     string line; // буфер под строку
@@ -102,7 +105,10 @@ bool read_scored_sections(const string& path, map<string, vector<MorphemeRule>>&
 //   	false - иначе.
 bool read_word_sections(const string& path, map<string, vector<string>>& out) {
     ifstream f(path); // открываем на чтение
-    if (!f) return false; // не открылся
+    if (!f) {
+        printf("Не удалось открыть файл: %s\n", path.c_str());
+        return false; // не открылся
+    } // не открылся
 
     bool any = false; // признак того что что-то прочитали
     string line; // буфер под строку
@@ -136,7 +142,10 @@ bool read_word_sections(const string& path, map<string, vector<string>>& out) {
 //   	false - иначе
 bool read_word_list(const string& path, vector<string>& out) {
     ifstream f(path); // открываем на чтение
-    if (!f) return false; // не открылся
+    if (!f){
+        printf("Не удалось открыть файл: %s\n", path.c_str());
+        return false; // не открылся
+    }
 
     bool any = false;
     string line; // буфер строки
@@ -154,7 +163,6 @@ bool read_word_list(const string& path, vector<string>& out) {
 //
 // Возвращаемые значения:
 // 		true - если был успешно прочитан хотя бы один файл
-
 bool MorphRules::load_from_lib() {
     bool any = false; // флаг - прочитан хотя бы один файл
 

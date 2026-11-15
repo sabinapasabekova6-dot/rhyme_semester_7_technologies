@@ -267,18 +267,62 @@ bool is_rhyme(const VerbInfo& w1, const VerbInfo& w2,
 }
 
 
-// Ищет пары рифмующихся глаголов в списке предложений.
-vector<VerbStruct> find_rhymes(
-    const vector<string>& sentences,
-    uint8_t min_verb_score,
-    double min_similarity)
-{
-    vector<VerbStruct> result;
-    if (sentences.empty()) {
-        return result;
-    }
 
-    // Собираем все глаголы из всех предложений
+// Длина общего начала двух строк в символах (UTF-8: кириллица - 2 байта).
+size_t common_prefix_len(string_view a, string_view b) {
+    size_t count = 0;
+    size_t i = 0;
+    while (i < a.size() && i < b.size()) {
+        unsigned char c = static_cast<unsigned char>(a[i]);
+        size_t len = 1; // сколько байт занимает символ, судя по первому байту
+        if ((c & 0xE0) == 0xC0) {
+            len = 2;
+        } else if ((c & 0xF0) == 0xE0) {
+            len = 3;
+        } else if ((c & 0xF8) == 0xF0) {
+            len = 4;
+        }
+        if (i + len > a.size() || i + len > b.size()) {
+            break;
+        }
+        if (a.substr(i, len) != b.substr(i, len)) {
+            break;
+        }
+        ++count;
+        i = i + len; // i растет на каждом шаге, цикл конечный
+    }
+    return count;
+}
+
+// Одинаковые и однокоренные слова рифмой не считаем.
+bool is_same_root(const string& word1, const string& stem1,
+                  const string& word2, const string& stem2) {
+    // одно и то же слово
+    if (word1 == word2) {
+        return true;
+    }
+    // у обоих найдена одинаковая основа (арестовали - арестовать)
+    if (!stem1.empty() && stem1 == stem2) {
+        return true;
+    }
+    // общее начало занимает половину более короткого слова или больше
+    size_t len1 = count_chars(word1);
+    size_t len2 = count_chars(word2);
+    size_t shorter = len1;
+    if (len2 < shorter) {
+        shorter = len2;
+    }
+    size_t prefix = common_prefix_len(word1, word2);
+    if (prefix * 2 >= shorter) {
+        return true;
+    }
+    return false;
+}
+
+// Собирает все глаголы из всех предложений.
+// Одна запись на КАЖДОЕ вхождение слова в текст.
+vector<VerbInfo> collect_verbs(const vector<string>& sentences,
+                               uint8_t min_verb_score) {
     vector<VerbInfo> all_verbs;
     for (size_t i = 0; i < sentences.size(); ++i) {
         string_view body = sentences[i];
@@ -295,6 +339,22 @@ vector<VerbStruct> find_rhymes(
             all_verbs.push_back(verbs[k]);
         }
     }
+    return all_verbs;
+}
+
+// Ищет пары рифмующихся глаголов в списке предложений.
+vector<VerbStruct> find_rhymes(
+    const vector<string>& sentences,
+    uint8_t min_verb_score,
+    double min_similarity)
+{
+    vector<VerbStruct> result;
+    if (sentences.empty()) {
+        return result;
+    }
+
+    // Собираем все глаголы из всех предложений
+    vector<VerbInfo> all_verbs = collect_verbs(sentences, min_verb_score);
 
     if (all_verbs.size() < 2) {
         return result;

@@ -4,7 +4,8 @@
 #include <iostream>
 #include <cstdint>
 #include <vector>
-#include <windows.h>   
+#include <map>
+#include "analis/IdentVerbs.h"
 using namespace std;
 
 
@@ -41,10 +42,8 @@ void flushSentence(ofstream& outputFile, string& currentSentence, int& sentenceN
 void writeNumberedSentences(const string& inputFileName);
 
 
-
 vector<string> readNumberedSentences(const string& filename);
 //ДЛЯ resilt_file.cpp
-
 
 // СТРУКТУРЫ ДАННЫХ
 
@@ -63,8 +62,9 @@ struct VerbStruct {
 // промежуточная структура для того чтобы собрать все предложения в которых есть произвольный глагол 
 struct WordGlobalStats {
     string word;           // произвольный глагол
-    int totalCount;        // суммируем sentences 
-    vector<int> sentences; // перечисляем в каких предложениях встретился этот глагол
+    string stem;           // основа глагола (нужна, чтобы отличать однокоренные слова)
+    int totalCount;        // сколько раз глагол встретился в тексте
+    vector<int> sentences; // номера предложений: по одному номеру на каждое вхождение
 };
 
 // результат 
@@ -88,9 +88,10 @@ string toLowerStr(string s);
 // идёт ли слово a раньше слова b в словаре 
 bool isLessAlpha(const string& a, const string& b);
 
-// добавляет глагол в вектор промежуточной структуры. 
-// Принимает вектор по ссылке (для изменения), глагол, номер предложения где встр.
-void addWordToGlobalStats(vector<WordGlobalStats>& globalStats, const string& word, int sentenceNum);
+// добавляет ОДНО вхождение глагола в таблицу слов.
+// globalStats - таблица уникальных слов, indexOfWord - быстрый поиск слова в таблице
+void addWordToGlobalStats(vector<WordGlobalStats>& globalStats, map<string, int>& indexOfWord,
+                          const string& word, const string& stem, int sentenceNum);
 
 // сортирует вектор целых чисел по возрастанию. Принимает вектор по ссылке.
 void sortNumbers(vector<int>& vec);
@@ -106,14 +107,15 @@ void shakerSort(vector<RhymeStats>& stats);
 // ГЛАВНЫЕ ФУНКЦИИ
 
 
-// ГЛАВНАЯ ФУНКЦИЯ ОБРАБОТКИ (принимает УКАЗАТЕЛЬ на вектор)
-// возвращает вектор структур с готовой статистикой
-vector<RhymeStats> processRhymes(vector<VerbStruct>* verbs);
+// ГЛАВНАЯ ФУНКЦИЯ ОБРАБОТКИ
+// verbs - все найденные глаголы, по одной записи на каждое вхождение в текст
+// minSimilarity - порог похожести окончаний (0.0 ... 1.0)
+// возвращает вектор структур с готовой статистикой по парам рифм
+vector<RhymeStats> buildRhymeStats(const vector<VerbInfo>& verbs, double minSimilarity);
+
+// ОТЛАДКА: записывает в файл все найденные слова с их весом, основой и окончанием
+void writeVerbsDebug(const vector<VerbInfo>& verbs, const string& filename);
 
 // ФУНКЦИЯ ЗАПИСИ В ФАЙЛ
 // принимает вектор по константной ссылке и имя файла по константной ссылке
 void writeToFile(const vector<RhymeStats>& stats, const string& filename);
-
-
-
-

@@ -151,6 +151,12 @@ void writeNumberedSentences(const string& inputFileName) {
     // text - это весь входной файл, прочитанный целиком в одну строку итератор который читает все байты 
     string text((istreambuf_iterator<char>(inputFile)), istreambuf_iterator<char>());
     inputFile.close();
+    if (text.size() >= 3
+        && (unsigned char)text[0] == 0xEF
+        && (unsigned char)text[1] == 0xBB
+        && (unsigned char)text[2] == 0xBF) {
+        text = text.substr(3);
+    }
 
     string outputFileName = buildNumberedSentencesFileName(inputFileName);
     ofstream outputFile(outputFileName.c_str());
@@ -209,14 +215,22 @@ void writeNumberedSentences(const string& inputFileName) {
 
         // если текущий символ - перевод строки, проверяем символ ПЕРЕД ним
         // (в тексте, который мы уже собрали в currentSentence)
-        if (currentChar == '\n' && currentSentence.size() > 1) {
-            // previousChar - это символ, который стоял прямо перед "\n"
-            char previousChar = currentSentence[currentSentence.size() - 2];
+        if (currentChar == '\n') {
+            bool needFlush = false;
 
-            if (!isLetterChar(previousChar)) {
-                // перед переводом строки стоит не буква (например, ":") -
-                // значит, здесь тоже заканчивается "предложение" (строка)
+            if (currentSentence.size() > 1) {
+                char previousChar = currentSentence[currentSentence.size() - 2];
+                if (!isLetterChar(previousChar)) {
+                    needFlush = true;
+                }
+            }
+
+            if (needFlush) {
                 flushSentence(outputFile, currentSentence, sentenceNumber);
+            }
+            else {
+                // перенос строки внутри предложения заменяем пробелом
+                currentSentence[currentSentence.size() - 1] = ' ';
             }
         }
     }

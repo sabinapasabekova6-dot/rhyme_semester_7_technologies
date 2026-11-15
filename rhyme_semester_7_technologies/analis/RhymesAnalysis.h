@@ -80,6 +80,22 @@ bool is_rhyme(const VerbInfo& w1, const VerbInfo& w2,
 				double min_similarity = 0.5);
 
 
+// Длина общего начала двух строк в символах.
+size_t common_prefix_len(string_view a, string_view b);
+
+// true, если слова одинаковые или однокоренные (такую пару рифмой не считаем).
+// word - слово, stem - его основа из VerbInfo (может быть пустой).
+bool is_same_root(const string& word1, const string& stem1,
+                  const string& word2, const string& stem2);
+
+// Собирает глаголы из всех предложений.
+// Одна запись на КАЖДОЕ вхождение слова в текст (с номером предложения в num).
+// Параметры:
+//   sentences      - строки вида "N) текст";
+//   min_verb_score - минимальный вес глагола (0..100).
+vector<VerbInfo> collect_verbs(const vector<string>& sentences,
+                               uint8_t min_verb_score);
+
 // Ищет пары рифмующихся глаголов в списке предложений.
 // Параметры:
 //   sentences      - предложения, каждое с разметкой "N. ..." (N - номер);

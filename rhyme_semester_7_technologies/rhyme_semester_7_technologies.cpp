@@ -1,9 +1,15 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <ctime>
 #include <windows.h>
 #include "Total_Header.h"
+#include "analis/MorphRules.h"
 #include "analis/RhymesAnalysis.h"
+
+// Настройки анализа (меняются здесь в одном месте)
+const int MIN_VERB_SCORE = 50; // минимальный вес слова, чтобы считать его глаголом (0..100)
+const double MIN_SIMILARITY = 0.5; // минимальная похожесть окончаний для рифмы (0.0..1.0)
 
 int main() {
     // UTF-8 ввод/вывод консоли
@@ -13,7 +19,13 @@ int main() {
     // работали только с ASCII, а UTF-8-байты >= 128 они не трогали
 
     cout << "Анализ рифмующихся глаголов\n\n";
-
+    const MorphRules& rules = MorphRules::instance();
+    if (rules.endingsInfinitive.empty() && rules.endingsPast.empty() && rules.endingsPresent.empty()) {
+        cout << "Ошибка: не найдены файлы словаря в папке lib. "
+                "Проверьте рабочую папку программы.\n";
+        cin.get();
+        return 1;
+    }
     string path = requestValidInputFile();
     writeNumberedSentences(path);
 
@@ -27,17 +39,28 @@ int main() {
         // НЕ выходим — ниже создадим пустой файл статистики
     } else {
         cout << "\nПредложений для анализа: " << sentences.size() << "\n";
-        cout << "Ищем пары рифмующихся глаголов (может занять время)...\n";
 
-        vector<VerbStruct> verbs = find_rhymes(sentences, 50, 0.5);
-        cout << "Найдено пар-кандидатов: " << verbs.size() << "\n";
+        clock_t startTime = clock(); // для замера времени
 
+        // 1) все глаголы текста, по одной записи на каждое вхождение
+        vector<VerbInfo> verbs = collect_verbs(sentences, MIN_VERB_SCORE);
+        cout << "Найдено глаголов в тексте (с повторами): " << verbs.size() << "\n";
+
+        // отладочный файл: какие слова приняты за глаголы и с каким весом
+        // (если он не нужен - закомментируйте следующую строку)
+        writeVerbsDebug(verbs, path + "_verbs_debug.txt");
+
+        // 2) статистика по парам рифм
         if (!verbs.empty()) {
-            stats = processRhymes(&verbs);
+            stats = buildRhymeStats(verbs, MIN_SIMILARITY);
         } else {
-            cout << "Рифмующихся пар не найдено — файл статистики будет пустым "
+            cout << "Глаголов не найдено — файл статистики будет пустым "
                     "(только заголовок).\n";
         }
+        cout << "Найдено пар рифм: " << stats.size() << "\n";
+
+        double seconds = (double)(clock() - startTime) / CLOCKS_PER_SEC;
+        cout << "Время анализа, секунд: " << seconds << "\n";
     }
 
     // ВСЕГДА пишем файл — даже если статистика пустая

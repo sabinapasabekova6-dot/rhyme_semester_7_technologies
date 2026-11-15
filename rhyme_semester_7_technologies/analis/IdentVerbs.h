@@ -51,5 +51,5 @@ private:
 
 // поля класса:
 	vector<string> sentence_;
-	uint64_t num_;
+	uint64_t num_ = 0;
 }; // IdentVerbs

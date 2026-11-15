@@ -197,6 +197,18 @@ void IdentVerbs::parse_sentence(const string& src){
 			}
 			continue;
 		}
+		if (c == 0xC2 || c == 0xE2) {
+			if (!current.empty()) {
+				sentence_.push_back(current);
+				current.clear();
+			}
+			i = i + 1;
+			while (i < src.size() && (static_cast<unsigned char>(src[i]) & 0xC0) == 0x80) {
+				i = i + 1;
+			}
+			i = i - 1;
+			continue;
+		}
 		if (c == '-' || c == '\'' || c == '`'){
 			bool has_prev = !current.empty();
 			bool has_next = (i + 1 < src.size()) && !is_separator(static_cast<unsigned char>(src[i + 1]));
