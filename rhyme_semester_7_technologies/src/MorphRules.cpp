@@ -1,5 +1,6 @@
 #include "MorphRules.h"
 #include <cctype>
+#include <cstdio>
 #include <fstream>
 #include <map>
 #include <string_view>
@@ -126,6 +127,7 @@ bool read_word_sections(const string& path, map<string, vector<string>>& out) {
         }
 
         if (target == nullptr) continue; // слово вне секции пропускаем
+        if (sv.find_first_of(" \t") != string_view::npos) continue; // строка с весом
 
         target->push_back(string(sv)); // кладём слово в текущую секцию
         any = true; // отметили прочитанное
@@ -207,6 +209,13 @@ bool MorphRules::load_from_lib() {
 
     // participles.txt
     map<string, vector<string>> wordSections; // карта "секция и слова"
+    if (read_word_sections("lib/endings.txt", wordSections)) {
+        formsInfinitive = move(wordSections["form_infinitive"]);
+        formsPast = move(wordSections["form_past"]);
+        formsPresent = move(wordSections["form_present"]);
+        formsImperative = move(wordSections["form_imperative"]);
+    }
+    wordSections.clear();
     if (read_word_sections("lib/participles.txt", wordSections)) {
         map<string, vector<string>>::iterator it;
 
@@ -231,6 +240,12 @@ bool MorphRules::load_from_lib() {
     return any;
 }
 
+MorphRules load_morph_rules() {
+    MorphRules rules;
+    rules.load_from_lib();
+    return rules;
+}
+
 // Функция возвращает единственный экземпляр правил,
 // заполненный при первом обращении. Последующие вызовы отдают
 // уже загруженный словарь
@@ -238,12 +253,6 @@ bool MorphRules::load_from_lib() {
 // Возвращаемые значения:
 //		 ссылку на статический словарь MorphRules
 const MorphRules& MorphRules::instance() {
-    static MorphRules rules; // сам словарь
-    static bool loaded = false; // проверка, загружался ли словарь ранее
-
-    if (!loaded) { // при первом вызове - грузим из
-        rules.load_from_lib();
-        loaded = true;
-    }
-    return rules; // возвращаем ссылку
+    static const MorphRules rules = load_morph_rules();
+    return rules;
 }

@@ -69,63 +69,78 @@ string lower_word(string_view word) {
     return result;
 }
 
-// Функция приведения слова к фонетической записи
-string to_phonetic(string_view word) {
-    if (word.empty()) return "";
-
-    string lword = lower_word(word);
-    string result;
-    result.reserve(lword.size() + 4);
-    size_t i = 0;
-    while (i < lword.size()) {
-        unsigned char c = static_cast<unsigned char>(lword[i]);
-        // ASCII (латиница, цифры, символы) - без изменений
-        if (c < 128) {
-            result += static_cast<char>(c);
-            ++i;
-            continue;
-        }
-        // остальное копируем как есть
-        if (i + 1 >= lword.size()) {
-            result += lword[i];
-            ++i;
-            continue;
-        }
-
-        string_view ch(lword.data() + i, 2);
-
-        if (ch == "я") result += "а";
-        else if (ch == "ю") result += "у";
-        else if (ch == "ё") result += "о";
-        else if (ch == "е") result += "э";
-        else if (ch == "ь" || ch == "ъ") {/* знаки не имеют звука */}
-        else result.append(ch);
-        i += 2;
+// Длина символа с начала UTF-8 строки.
+size_t first_char_bytes(string_view text) {
+    size_t size = 1;
+    while (size < text.size() && (static_cast<unsigned char>(text[size]) & 0xC0) == 0x80) {
+        ++size;
     }
+    return size;
+}
 
-    // Оглушение звонкого согласного в конце слова
-    if (result.size() >= 2) {
-        size_t n = result.size();
-        unsigned char b0 = static_cast<unsigned char>(result[n - 2]);
-        unsigned char b1 = static_cast<unsigned char>(result[n - 1]);
-        // Проверяем, что последний символ - корректный 2-байтный кириллический
-        if ((b0 == 0xD0 || b0 == 0xD1) && b1 >= 0x80 && b1 <= 0xBF) {
-            string_view last(result.data() + n - 2, 2);
-            string_view repl;
-            if (last == "б") repl = "п";
-            else if (last == "в") repl = "ф";
-            else if (last == "г") repl = "к";
-            else if (last == "д") repl = "т";
-            else if (last == "ж") repl = "ш";
-            else if (last == "з") repl = "с";
-
-            if (!repl.empty()) {
-                result[n - 2] = repl[0];
-                result[n - 1] = repl[1];
+void assimilate_voicing(vector<string_view>& sounds) {
+    const string_view voiced[] = {"б", "в", "г", "д", "ж", "з"};
+    const string_view unvoiced[] = {"п", "ф", "к", "т", "ш", "с"};
+    bool devoice = true; // конец слова
+    bool voice = false;
+    for (size_t i = sounds.size(); i > 0; --i) {
+        string_view& sound = sounds[i - 1];
+        for (size_t j = 0; j < 6; ++j) {
+            if (devoice && sound == voiced[j]) {
+                sound = unvoiced[j];
+                break;
+            }
+            if (voice && sound == unvoiced[j]) {
+                sound = voiced[j];
+                break;
             }
         }
+
+        devoice = sound == "п" || sound == "ф" || sound == "к" || sound == "т"
+               || sound == "ш" || sound == "с" || sound == "х" || sound == "ц"
+               || sound == "ч" || sound == "щ";
+        // «в» само оглушается, но не озвончает предыдущий согласный.
+        voice = sound == "б" || sound == "г" || sound == "д" || sound == "ж" || sound == "з";
+    }
+}
+
+// Упрощённая запись для сравнения рифм. Безударные гласные не редуцируем.
+string to_phonetic(string_view word) {
+    string lword = lower_word(word);
+    string_view remaining = lword;
+    string_view previous;
+    vector<string_view> sounds;
+    while (!remaining.empty()) {
+        if (remaining == "тся" || remaining == "ться") {
+            sounds.push_back("ц");
+            sounds.push_back("а");
+            break;
+        }
+
+        size_t bytes = first_char_bytes(remaining);
+        string_view ch = remaining.substr(0, bytes);
+        string_view vowel;
+        if (ch == "я") vowel = "а";
+        else if (ch == "ю") vowel = "у";
+        else if (ch == "ё") vowel = "о";
+        else if (ch == "е") vowel = "э";
+
+        if (!vowel.empty()) {
+            if (previous.empty() || previous == "ь" || previous == "ъ" || is_vowel(previous)) {
+                sounds.push_back("й");
+            }
+            sounds.push_back(vowel);
+        } else if (ch != "ь" && ch != "ъ") {
+            sounds.push_back(ch);
+        }
+        previous = ch;
+        remaining.remove_prefix(bytes);
     }
 
+    assimilate_voicing(sounds);
+    string result;
+    result.reserve(lword.size());
+    for (string_view sound : sounds) result.append(sound);
     return result;
 }
 
@@ -144,6 +159,11 @@ size_t common_suffix_len(string_view a, string_view b) {
         ++count;
     }
     return count;
+}
+
+bool phonetic_ends_with(string_view text, string_view tail) {
+    if (text.size() < tail.size()) return false;
+    return text.substr(text.size() - tail.size()) == tail;
 }
 
 // Коэффициент схожести 0...1.
@@ -166,6 +186,33 @@ double similarity(string_view phonetic_a, string_view phonetic_b) {
     }
     size_t common = common_suffix_len(phonetic_a, phonetic_b);
     double res = static_cast<double>(common) / static_cast<double>(min_c);
+    if (res == 1.0 || common == 0) return res;
+
+    // Для кириллической рифмы нужен общий гласный перед возвратным
+    // хвостом: «ца» или «са» сами по себе не дают рифму.
+    string_view tail = phonetic_a;
+    if (phonetic_ends_with(tail, "ца") || phonetic_ends_with(tail, "са")) tail.remove_suffix(4);
+    bool shared_vowel = false;
+    bool cyrillic_tail = false;
+    size_t remaining = common;
+    if (tail.size() != phonetic_a.size()) {
+        if (remaining <= 2) return 0.0;
+        remaining -= 2;
+    }
+    for (size_t i = 0; i < remaining && !tail.empty(); ++i) {
+        size_t bytes = last_char_bytes(tail);
+        string_view sound = tail.substr(tail.size() - bytes);
+        if (is_vowel(sound)) shared_vowel = true;
+        if (is_consonant(sound)) cyrillic_tail = true;
+        tail.remove_suffix(bytes);
+    }
+    if (cyrillic_tail && !shared_vowel) return 0.0;
+
+    // Совпадение только по продуктивному суффиксу и «ть» — слабый
+    // сигнал: у «рисовать» и «чувствовать» одинаковые хвосты на письме.
+    if (common == 4 && (phonetic_ends_with(phonetic_a, "оват") || phonetic_ends_with(phonetic_a, "эват"))) {
+        res *= 0.8;
+    }
     return res;
 }
 

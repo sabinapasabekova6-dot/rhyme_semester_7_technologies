@@ -19,6 +19,12 @@ struct MorphRules {
     vector<MorphemeRule> endingsPresent;
     vector<MorphemeRule> endingsImperative;
 
+    // Типовые границы формы внутри взвешенных хвостов.
+    vector<string> formsInfinitive;
+    vector<string> formsPast;
+    vector<string> formsPresent;
+    vector<string> formsImperative;
+
     // Суффиксы
     vector<MorphemeRule> suffixesVerbal; // глагольные
     vector<string> suffixesNominal; // именные

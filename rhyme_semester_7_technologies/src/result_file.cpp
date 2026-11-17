@@ -73,7 +73,7 @@ void sortNumbers(vector<int>& vec) {
 string vectorToString(const vector<int>& vec) {
     string result = "";
 
-    for (int i = 0; i < vec.size(); i++) {
+    for (size_t i = 0; i < vec.size(); i++) {
         // Метод: конкатенация строк. to_string() преобразует int в string
         result += to_string(vec[i]);
 

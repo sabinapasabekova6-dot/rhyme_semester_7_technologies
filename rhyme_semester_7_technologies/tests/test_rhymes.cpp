@@ -102,7 +102,7 @@ TEST(ToPhoneticTest, MixedCaseLowered) {
 
 // ----- йотированные гласные -----
 TEST(ToPhoneticTest, YaToA) {
-    EXPECT_EQ(to_phonetic("яма"), "ама");
+    EXPECT_EQ(to_phonetic("яма"), "йама");
 }
 
 TEST(ToPhoneticTest, YaAtEnd) {
@@ -110,19 +110,19 @@ TEST(ToPhoneticTest, YaAtEnd) {
 }
 
 TEST(ToPhoneticTest, YuToU) {
-    EXPECT_EQ(to_phonetic("юг"), "ук");
+    EXPECT_EQ(to_phonetic("юг"), "йук");
 }
 
 TEST(ToPhoneticTest, YoToO) {
-    EXPECT_EQ(to_phonetic("ёж"), "ош");
+    EXPECT_EQ(to_phonetic("ёж"), "йош");
 }
 
 TEST(ToPhoneticTest, EToE) {
-    EXPECT_EQ(to_phonetic("еда"), "эда");
+    EXPECT_EQ(to_phonetic("еда"), "йэда");
 }
 
 TEST(ToPhoneticTest, YotirovannyeVowel) {
-    EXPECT_EQ(to_phonetic("ёлка"), "олка");
+    EXPECT_EQ(to_phonetic("ёлка"), "йолка");
 }
 
 // ----- выпадение ь / ъ -----
@@ -135,7 +135,7 @@ TEST(ToPhoneticTest, SoftSignRemovedAtEnd) {
 }
 
 TEST(ToPhoneticTest, HardSignRemoved) {
-    EXPECT_EQ(to_phonetic("объём"), "обом");
+    EXPECT_EQ(to_phonetic("объём"), "обйом");
 }
 
 TEST(ToPhoneticTest, OnlySoftSign) {
@@ -215,6 +215,25 @@ TEST(ToPhoneticTest, RhymePairKlyuchLuch) {
     ASSERT_GE(p1.size(), 4u);
     ASSERT_GE(p2.size(), 4u);
     EXPECT_EQ(p1.substr(p1.size() - 4), p2.substr(p2.size() - 4));
+}
+
+TEST(ToPhoneticTest, ReflexiveAffricate) {
+    string finite = to_phonetic("учится");
+    string infinitive = to_phonetic("учиться");
+    EXPECT_EQ(finite, "учица");
+    EXPECT_EQ(finite, infinitive);
+}
+
+TEST(ToPhoneticTest, VoicingInsideWord) {
+    EXPECT_EQ(to_phonetic("ползти"), "полсти");
+    EXPECT_EQ(to_phonetic("сдать"), "здат");
+    EXPECT_EQ(to_phonetic("связать"), "свазат");
+}
+
+TEST(SimilarityTest, ReflexivePostfixAloneIsInsufficient) {
+    string first = to_phonetic("мыться");
+    string second = to_phonetic("биться");
+    EXPECT_DOUBLE_EQ(similarity(first, second), 0.0);
 }
 
 //------------- common_suffix_len -----------------------

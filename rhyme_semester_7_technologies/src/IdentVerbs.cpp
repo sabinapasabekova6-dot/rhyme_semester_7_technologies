@@ -3,6 +3,7 @@
 #include <cctype>
 #include <algorithm>
 #include <utility>
+#include <string_view>
 
 using std::string_view, std::move, std::string;
 
@@ -48,12 +49,49 @@ bool ends_with(string_view word, string_view suf) {
 	return word.compare(word.size() - suf.size(), suf.size(), suf) == 0;
 }
 
-// Проверка "основа оканчивается на именной суффикс"
+// Именной суффикс ищем перед падежной флексией или на конце слова.
 bool has_nominal_suffix(string_view word, const vector<string>& suffixes) {
-	for (const string& m : suffixes) {
-		if (ends_with(word, m)) return true;
-	}
-	return false;
+    const string_view flexions[] = {
+        "", "а", "я", "у", "ю", "е", "и", "ы", "о",
+        "ом", "ем", "ам", "ям", "ах", "ях", "ов", "ев", "ей", "ами", "ями"
+    };
+    for (string_view flexion : flexions) {
+        if (!flexion.empty() && !ends_with(word, flexion)) continue;
+        string_view stem = word;
+        stem.remove_suffix(flexion.size());
+        for (const string& suffix : suffixes) {
+            if (ends_with(stem, suffix)) return true;
+        }
+    }
+    return false;
+}
+
+struct VerbForm {
+    string_view ending;
+    const MorphemeRule* weight = nullptr;
+    bool takes_suffix = false;
+};
+
+// Частотный хвост может захватывать часть основы (например, «кали»).
+// Границу формы определяем отдельно по «ли».
+void match_verb_form(string_view word, const vector<string>& forms,
+                     const vector<MorphemeRule>& weights,
+                     bool takes_suffix, VerbForm& best) {
+    string_view ending;
+    for (const string& form : forms) {
+        if (form.size() > ending.size() && ends_with(word, form)) ending = form;
+    }
+    if (ending.empty()) return;
+
+    const MorphemeRule* weight = try_rule_table(word, weights, nullptr);
+    if (!weight || weight->text.size() < ending.size()) return;
+    if (best.weight && weight->text.size() < best.weight->text.size()) return;
+    if (best.weight && weight->text.size() == best.weight->text.size()
+        && weight->score <= best.weight->score) return;
+
+    best.ending = ending;
+    best.weight = weight;
+    best.takes_suffix = takes_suffix;
 }
 
 // Проверка "слово - деепричастие/причастие"
@@ -96,71 +134,97 @@ VerbInfo IdentVerbs::analysis_word(const string& word) {
         return info;
     }
 
-    // чёрный список
-    if (is_in_word_list(normalized_word, rules.blacklist)) {
-        info.score = 0;
-        return info;
-    }
+    if (is_in_word_list(normalized_word, rules.blacklist)) return info;
 
-    string_view sv = normalized_word; // представление нормализованного слова
-    uint32_t total_score = 0;
-    string found_ending;
-    string found_suffix;
-
-    // причастия/деепричастия — не глаголы
-    if (is_participle(sv, rules.gerundSuffixes, rules.participleSuffixes)) {
-        info.score = 0;
-        return info;
-    }
-
-    // ищем самое длинное окончание по всем пяти таблицам сразу
-    const MorphemeRule* best_end = nullptr;
-    best_end = try_rule_table(sv, rules.endingsInfinitive, best_end);
-    best_end = try_rule_table(sv, rules.endingsReflexive,  best_end);
-    best_end = try_rule_table(sv, rules.endingsPast,       best_end);
-    best_end = try_rule_table(sv, rules.endingsPresent,    best_end);
-    best_end = try_rule_table(sv, rules.endingsImperative, best_end);
-
-    // таблицы пусты (нет lib/) или ни одно окончание не подошло
-    if (!best_end) {
-        info.score = 5;        // «вероятно не глагол»
-        return info;
-    }
-
-    // Короткие частые формы плохо различаются по хвосту слова.
-    // Список содержит только конкретные глагольные формы, без «есть»,
-    // «пила», «стали» и других слов, требующих контекста.
-    static const vector<string> known_verbs = {
-        "идти", "везти", "могу", "иду", "буду", "шёл",
-        "шла", "шло", "шли", "бил", "лил"
+    string_view sv = normalized_word;
+    // Частые формы со слабым окончанием или нестандартной основой.
+    // Омонимы «пила», «стали», «печь» требуют контекста.
+    const string_view known_verbs[] = {
+        "идти", "везти", "могу", "может", "хочу", "хочет", "иду", "еду",
+        "буду", "будет", "будут", "был", "была", "было", "были",
+        "живу", "жду", "знаю", "вижу", "слышу", "помню", "сплю", "любит",
+        "имел", "имела", "имело", "имели",
+        "шёл", "шел", "шла", "шло", "шли", "бил", "лил",
+        "дал", "дало", "несла", "нёсся", "несся", "ушёл", "ушел"
     };
-    bool known_verb = is_in_word_list(sv, known_verbs);
+    bool known_verb = false;
+    for (string_view known : known_verbs) {
+        if (sv == known) {
+            known_verb = true;
+            break;
+        }
+    }
 
-    // отрезаем найденное окончание
-    sv.remove_suffix(best_end->text.size());
-    found_ending = best_end->text;
-    total_score += best_end->score;
+    string_view postfix;
+    if (ends_with(sv, "ся") || ends_with(sv, "сь")) {
+        postfix = sv.substr(sv.size() - 4);
+        sv.remove_suffix(postfix.size());
+    }
 
-    if (has_nominal_suffix(sv, rules.suffixesNominal)) {
-        info.score = 0;
+    if (!known_verb && is_participle(sv, rules.gerundSuffixes, rules.participleSuffixes)) {
         return info;
     }
 
-    // ищем глагольный суффикс в остатке
-    const MorphemeRule* best_suf = try_rule_table(sv, rules.suffixesVerbal, nullptr);
-    if (best_suf) {
-        sv.remove_suffix(best_suf->text.size());
-        found_suffix = best_suf->text;
-        total_score += best_suf->score;
+    VerbForm form;
+    match_verb_form(sv, rules.formsInfinitive, rules.endingsInfinitive, true, form);
+    match_verb_form(sv, rules.formsPast, rules.endingsPast, true, form);
+    match_verb_form(sv, rules.formsPresent, rules.endingsPresent, false, form);
+    match_verb_form(sv, rules.formsImperative, rules.endingsImperative, false, form);
+
+    if (!form.weight) {
+        info.score = 5;
+        if (known_verb) {
+            info.stem = sv;
+            info.ending = postfix;
+            info.score = 100;
+        }
+        return info;
     }
 
-    info.stem   = string(sv);
-    info.ending = found_suffix + found_ending;
-    // Для известной формы 100 означает словарное подтверждение,
-    // а для остальных слов сохраняется исходная оценка правила.
-    // Это служебный вес, а не измеренная вероятность в процентах.
+    uint32_t total_score = form.weight->score;
+    if (!postfix.empty()) {
+        // «ся» присоединяется после согласной, «сь» — после гласной.
+        // Подтверждение из таблицы возвратных форм учитываем только
+        // при наличии подходящей формы перед постфиксом.
+        const string_view vowels[] = {"а", "е", "ё", "и", "о", "у", "ы", "э", "ю", "я"};
+        string_view last = sv.substr(sv.size() - 2);
+        bool after_vowel = false;
+        for (string_view vowel : vowels) {
+            if (last == vowel) after_vowel = true;
+        }
+        if (after_vowel == (postfix == "сь")) {
+            const MorphemeRule* reflexive = try_rule_table(normalized_word, rules.endingsReflexive, nullptr);
+            if (reflexive && reflexive->text.size() > postfix.size()) {
+                total_score = std::max<uint32_t>(total_score, reflexive->score);
+            }
+        } else {
+            total_score = 5;
+        }
+    } else if (!known_verb && has_nominal_suffix(sv, rules.suffixesNominal)) {
+        return info;
+    }
+
+    string_view stem = sv;
+    stem.remove_suffix(form.ending.size());
+    if (form.takes_suffix) {
+        const MorphemeRule* suffix = try_rule_table(stem, rules.suffixesVerbal, nullptr);
+        if (suffix) {
+            stem.remove_suffix(suffix->text.size());
+            total_score += suffix->score;
+        } else if (form.ending == "ть" && postfix.empty() && stem.size() > 2) {
+            // В продуктивных инфинитивах сохраняем тематическую гласную
+            // в хвосте. Она уже учтена в частотном весе.
+            string_view vowel = stem.substr(stem.size() - 2);
+            if (vowel == "а" || vowel == "я" || vowel == "е" || vowel == "и") {
+                stem.remove_suffix(vowel.size());
+            }
+        }
+    }
+
+    info.stem = stem;
+    info.ending = normalized_word.substr(stem.size());
     if (known_verb) total_score = 100;
-    info.score  = static_cast<uint8_t>(std::min<uint32_t>(total_score, 100u));
+    info.score = static_cast<uint8_t>(std::min<uint32_t>(total_score, 100u));
     return info;
 }
 

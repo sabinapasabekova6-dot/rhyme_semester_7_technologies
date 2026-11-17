@@ -1,12 +1,13 @@
 # ---------- Компилятор и флаги ----------
 CXX := g++
-CXXFLAGS := -std=c++20 -Wall -Wextra -Werror -Wpedantic -g -I.
+CXXFLAGS := -std=c++20 -Wall -Wextra -Werror -Wpedantic -g -Isrc
 LDLIBS := -lgtest -lgtest_main -pthread
 
 # ---------- Общие объектные файлы ----------
 # Собираются один раз, переиспользуются несколькими тестами.
 OBJ_RHYMES := RhymesAnalysis.o
 OBJ_VERB := IdentVerbs.o MorphRules.o
+OBJ_PREVIEW := $(OBJ_RHYMES) $(OBJ_VERB) result_file.o
 
 # ---------- Имена собранных тестов ----------
 TEST_RHYMES := test_rhymes
@@ -49,8 +50,13 @@ $(TEST_DIAG): $(OBJ_VERB) tests/test_diagnostic.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # ---------- Правило: .cpp -> .o ----------
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+%.o: src/%.cpp
+	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
+
+-include $(OBJ_PREVIEW:.o=.d)
+
+rhyme_preview: rhyme_preview.cpp $(OBJ_PREVIEW)
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
 # Собрать и запустить все тесты
 test: $(ALL_TESTS)
@@ -93,7 +99,7 @@ run_diagnostic: $(TEST_DIAG)
 # ============================================================
 
 clean:
-	rm -f $(ALL_TESTS) *.o
+	rm -f $(ALL_TESTS) rhyme_preview $(OBJ_PREVIEW) $(OBJ_PREVIEW:.o=.d)
 
 help:
 	@echo "Доступные цели:"
@@ -104,5 +110,6 @@ help:
 	@echo "  make run_rhymes_complex - запустить test_rhymes_complex"
 	@echo "  make run_identverbs - запустить test_identverbs"
 	@echo "  make run_diagnostic - запустить test_diagnostic"
+	@echo "  make rhyme_preview - собрать консольную проверку для Linux"
 	@echo "  make clean - удалить собранные файлы"
 	@echo "  make help - показать эту справку"

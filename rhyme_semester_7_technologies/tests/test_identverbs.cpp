@@ -186,13 +186,13 @@ TEST(AnalysisWord, Infinitive) {
 TEST(AnalysisWord, InfinitiveReflexive) {
     auto info = IdentVerbs::analysis_word("мыться");
     EXPECT_GE(info.score, 90);
-    // самое длинное совпадение — "ться" (8 байт, 95), а не "ся"
+    // Знак инфинитива «ть» перед постфиксом «ся».
     EXPECT_EQ(info.ending, "ться");
 }
 
 TEST(AnalysisWord, PastReflexive) {
     auto info = IdentVerbs::analysis_word("мылся");
-    // "лся" (6 байт, 85) > "ся" (4 байта, 40)
+    // Суффикс прошедшего времени «л» перед постфиксом «ся».
     EXPECT_GE(info.score, 80);
     EXPECT_EQ(info.ending, "лся");
 }
@@ -208,6 +208,29 @@ TEST(AnalysisWord, NounEndingInL) {
     EXPECT_LT(info.score, 5);
 }
 
+TEST(AnalysisWord, ProductiveSuffixBeforePastForm) {
+    VerbInfo info = IdentVerbs::analysis_word("организовали");
+    EXPECT_GE(info.score, 50);
+    EXPECT_EQ(info.stem, "орган");
+    EXPECT_EQ(info.ending, "изовали");
+}
+
+TEST(AnalysisWord, ReflexiveImperativeAndParticiple) {
+    EXPECT_GE(IdentVerbs::analysis_word("улыбнись").score, 50);
+    EXPECT_LT(IdentVerbs::analysis_word("умывающийся").score, 50);
+}
+
+TEST(AnalysisWord, NounSuffixBeforeInflection) {
+    EXPECT_LT(IdentVerbs::analysis_word("строителю").score, 50);
+    EXPECT_LT(IdentVerbs::analysis_word("учителями").score, 50);
+}
+
+TEST(AnalysisWord, FrequentVerbAndUnmarkedYo) {
+    EXPECT_EQ(IdentVerbs::analysis_word("БЫЛ").score, 100);
+    EXPECT_GE(IdentVerbs::analysis_word("уйдет").score, 50);
+    EXPECT_GE(IdentVerbs::analysis_word("уйдёт").score, 50);
+}
+
 // ================= analysis_all_words / ident_verbs =================
 
 TEST(IdentVerbsSentence, SimpleVerbs) {
@@ -221,7 +244,6 @@ TEST(IdentVerbsSentence, SimpleVerbs) {
 TEST(IdentVerbsSentence, InfinitiveOnly) {
     IdentVerbs iv("Он хочет читать книгу.");
     auto verbs = iv.ident_verbs(40);
-    // "хочет" — "-ет" (45), "читать" — "-ать" (85)
     ASSERT_EQ(verbs.size(), 2u);
     EXPECT_EQ(verbs[0].verb, "хочет");
     EXPECT_EQ(verbs[1].verb, "читать");

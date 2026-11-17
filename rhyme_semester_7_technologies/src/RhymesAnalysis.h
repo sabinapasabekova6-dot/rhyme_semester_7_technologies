@@ -11,7 +11,7 @@ string to_phonetic(string_view word);
 // Длина общего суффикса (с конца) в символах
 size_t common_suffix_len(string_view a, string_view b);
 
-// Коэффициент схожести 0...1 (на фонетических строках)
+// Коэффициент схожести 0...1 по общему фонетическому хвосту
 double similarity(string_view phonetic_a, string_view phonetic_b);
 
 // -------------- Вспомогательные функции --------------------------
