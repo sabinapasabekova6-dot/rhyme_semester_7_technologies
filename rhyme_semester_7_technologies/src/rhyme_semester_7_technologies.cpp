@@ -4,8 +4,8 @@
 #include <ctime>
 #include <windows.h>
 #include "Total_Header.h"
-#include "analis/MorphRules.h"
-#include "analis/RhymesAnalysis.h"
+#include "MorphRules.h"
+#include "RhymesAnalysis.h"
 
 // Настройки анализа (меняются здесь в одном месте)
 const int MIN_VERB_SCORE = 50; // минимальный вес слова, чтобы считать его глаголом (0..100)

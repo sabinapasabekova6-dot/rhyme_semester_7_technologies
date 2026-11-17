@@ -9,7 +9,7 @@ using namespace std;
 #include <cstdio>
 #include <map>
 #include <algorithm>
-#include "analis/RhymesAnalysis.h"
+#include "RhymesAnalysis.h"
 
 
 // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
