@@ -6,65 +6,65 @@
 
 using std::string_view, std::move, std::string;
 
-namespace {
-
-	// Универсальный поиск самого длинного (а при равной длине - самого
-	// весомого) правила, которым заканчивается слово
-	// Возвращает указатель на лучшее правило либо best (если ничего не нашли).
-	// Параметры:
-	//     word  - слово, в котором ищем окончание/суффикс;
-	//     table - таблица правил (окончания или суффиксы);
-	//     best  - текущий лучший результат (для последовательного вызова
-	//             по нескольким таблицам; при первом вызове - nullptr).
-	const MorphemeRule* try_rule_table(string_view word,
-									const vector<MorphemeRule>& table,
-									const MorphemeRule* best) {
-		size_t word_s = word.size();
-		for (const MorphemeRule& rule : table) {
-			size_t rule_s = rule.text.size();
-			if (word_s <= rule_s) continue; // слово не длиннее правила
-			if (word.compare(word_s - rule_s, rule_s, rule.text) != 0) continue; // не совпало
-			if (!best
-				|| rule_s > best->text.size()
-				|| (rule_s == best->text.size() && rule.score > best->score)) {
-				best = &rule;
-			}
+// Универсальный поиск самого длинного (а при равной длине - самого
+// весомого) правила, которым заканчивается слово
+// Возвращает указатель на лучшее правило либо best (если ничего не нашли).
+// Параметры:
+//     word  - слово, в котором ищем окончание/суффикс;
+//     table - таблица правил (окончания или суффиксы);
+//     best  - текущий лучший результат (для последовательного вызова
+//             по нескольким таблицам; при первом вызове - nullptr).
+const MorphemeRule* try_rule_table(string_view word,
+								const vector<MorphemeRule>& table,
+								const MorphemeRule* best) {
+	size_t word_s = word.size();
+	for (const MorphemeRule& rule : table) {
+		size_t rule_s = rule.text.size();
+		if (word_s <= rule_s) continue; // слово не длиннее правила
+		if (word.compare(word_s - rule_s, rule_s, rule.text) != 0) continue; // не совпало
+		if (!best
+			|| rule_s > best->text.size()
+			|| (rule_s == best->text.size() && rule.score > best->score)) {
+			best = &rule;
 		}
-		return best;
 	}
-
-	// Проверка "слово в чёрном списке".
-	bool is_in_blacklist(string_view word, const vector<string>& blacklist) {
-		for (const string& w : blacklist)
-			if (word == w) return true;
-		return false;
-	}
-
-	// Проверяет, оканчивается ли word на suf
-	// Возвращает true, если word длиннее suf и последние suf.size()
-	// байт word совпадают с suf
-	bool ends_with(string_view word, string_view suf) {
-		if (word.size() <= suf.size()) return false; // слово не длиннее суффикса
-		return word.compare(word.size() - suf.size(), suf.size(), suf) == 0;
-	}
-
-	// Проверка "основа оканчивается на именной суффикс"
-	bool has_nominal_suffix(string_view word, const vector<string>& suffixes) {
-		for (const string& m : suffixes) {
-			if (ends_with(word, m)) return true;
-		}
-		return false;
-	}
-
-	// Проверка "слово - деепричастие/причастие"
-	bool is_participle(string_view word, const vector<string>& gerunds, const vector<string>& participles) {
-		for (const string& s : gerunds) 
-			if (ends_with(word, s)) return true;
-    	for (const string& s : participles) 
-			if (ends_with(word, s)) return true;
-    	return false;
-	}
+	return best;
 }
+
+// Проверка точного совпадения слова с элементом списка.
+// Параметры: word - проверяемое слово; words - список слов.
+// Возвращает true при совпадении, false - если слова в списке нет.
+bool is_in_word_list(string_view word, const vector<string>& words) {
+	for (const string& w : words)
+		if (word == w) return true;
+	return false;
+}
+
+// Проверяет, оканчивается ли word на suf
+// Возвращает true, если word длиннее suf и последние suf.size()
+// байт word совпадают с suf
+bool ends_with(string_view word, string_view suf) {
+	if (word.size() <= suf.size()) return false; // слово не длиннее суффикса
+	return word.compare(word.size() - suf.size(), suf.size(), suf) == 0;
+}
+
+// Проверка "основа оканчивается на именной суффикс"
+bool has_nominal_suffix(string_view word, const vector<string>& suffixes) {
+	for (const string& m : suffixes) {
+		if (ends_with(word, m)) return true;
+	}
+	return false;
+}
+
+// Проверка "слово - деепричастие/причастие"
+bool is_participle(string_view word, const vector<string>& gerunds, const vector<string>& participles) {
+	for (const string& s : gerunds) 
+		if (ends_with(word, s)) return true;
+	for (const string& s : participles) 
+		if (ends_with(word, s)) return true;
+	return false;
+}
+
 
 IdentVerbs::IdentVerbs(const string& src) {
 	parse_sentence(src);
@@ -72,32 +72,37 @@ IdentVerbs::IdentVerbs(const string& src) {
 
 }
 
-// Метод анализирующий одно слово и возвращающий по нему статистику 
+// Метод анализирующий одно слово и возвращающий по нему статистику.
+// Параметры: word - одно слово в UTF-8, регистр может быть любым.
+// Исходная строка не изменяется; info.verb содержит слово в нижнем регистре.
 // Возвращаемые значения:
 // 		VerbInfo - информация по глаголу, где:
 // 			score = 0 - слово не глагол
 //				  = 5 - идентифицировать не вышло, вероятно не глагол
 //                = <число> - найдено некоторое совпадение
 VerbInfo IdentVerbs::analysis_word(const string& word) {
+    // Нормализация нужна и при прямом вызове, без создания IdentVerbs.
+    string normalized_word = word;
+    normalize_word(normalized_word);
     // Один раз за вызов получаем ссылку на общий словарь.
     const MorphRules& rules = MorphRules::instance();
 
     VerbInfo info{};
-    info.verb = word;
+    info.verb = normalized_word;
 
-    // слишком короткое или не кириллица - точно не наш случай
-    if (!is_cyrillic_word(word) || word.size() < 4) {
+    // После проверки русских букв четыре байта соответствуют двум буквам.
+    if (!is_cyrillic_word(normalized_word) || normalized_word.size() < 4) {
         info.score = 0;
         return info;
     }
 
     // чёрный список
-    if (is_in_blacklist(word, rules.blacklist)) {
+    if (is_in_word_list(normalized_word, rules.blacklist)) {
         info.score = 0;
         return info;
     }
 
-    string_view sv = word; // рабочая обрезаемая копия
+    string_view sv = normalized_word; // представление нормализованного слова
     uint32_t total_score = 0;
     string found_ending;
     string found_suffix;
@@ -122,6 +127,15 @@ VerbInfo IdentVerbs::analysis_word(const string& word) {
         return info;
     }
 
+    // Короткие частые формы плохо различаются по хвосту слова.
+    // Список содержит только конкретные глагольные формы, без «есть»,
+    // «пила», «стали» и других слов, требующих контекста.
+    static const vector<string> known_verbs = {
+        "идти", "везти", "могу", "иду", "буду", "шёл",
+        "шла", "шло", "шли", "бил", "лил"
+    };
+    bool known_verb = is_in_word_list(sv, known_verbs);
+
     // отрезаем найденное окончание
     sv.remove_suffix(best_end->text.size());
     found_ending = best_end->text;
@@ -142,6 +156,10 @@ VerbInfo IdentVerbs::analysis_word(const string& word) {
 
     info.stem   = string(sv);
     info.ending = found_suffix + found_ending;
+    // Для известной формы 100 означает словарное подтверждение,
+    // а для остальных слов сохраняется исходная оценка правила.
+    // Это служебный вес, а не измеренная вероятность в процентах.
+    if (known_verb) total_score = 100;
     info.score  = static_cast<uint8_t>(std::min<uint32_t>(total_score, 100u));
     return info;
 }
@@ -163,7 +181,8 @@ vector<VerbInfo> IdentVerbs::ident_verbs(uint8_t min_score) {
 	vector<VerbInfo> out;
 	for (const auto& w : sentence_) {
 		VerbInfo info = analysis_word(w);
-		if (info.score >= min_score){
+		// Нулевой вес означает отказ: такой результат не включаем даже при пороге 0.
+		if (info.score > 0 && info.score >= min_score){
 			info.num = num_;
 			out.push_back(move(info));
 		}
@@ -282,28 +301,27 @@ void IdentVerbs::normalize() {
 	for (string& w : sentence_) normalize_word(w);
 }
 
-// Метод проверки принадлежности символа к кириллице
+// Проверка, что слово состоит только из русских букв в UTF-8.
+// Параметры: w - проверяемая строка, допускается любой регистр.
+// Возвращает true для непустого русского слова, false - иначе.
+// Цифры, дефисы, латиница и повреждённые последовательности отвергаются.
 bool IdentVerbs::is_cyrillic_word(const string& w) {
-	if (w.empty()) return false;
-	bool has_cyr = false;
-	size_t i = 0;
-	// проходим по байтам
-	while (i < w.size()) {
-		unsigned char c = static_cast<unsigned char>(w[i]);
-		if (c < 128) {
-			// ASCII-символ внутри слова, значит не чисто кириллическое
-			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) return false;
-			++i;
-			continue;
-		}
-		// кириллица: D0/D1 + второй байт
-		if ((c == 0xD0 || c == 0xD1) && i + 1 < w.size()) {
-			has_cyr = true;
-			i += 2;
-			continue;
-		}
-		// прочий символ пропускаем
-		return false;
-	}
-	return has_cyr;
+    if (w.empty()) return false;
+    size_t i = 0;
+    while (i < w.size()) {
+        // Каждая русская буква занимает два байта; одиночного байта недостаточно.
+        if (i + 1 >= w.size()) return false;
+        unsigned char first = static_cast<unsigned char>(w[i]);
+        unsigned char second = static_cast<unsigned char>(w[i + 1]);
+
+        // D0 90..BF: А..Я и а..п; D1 80..8F: р..я.
+        // Ё и ё расположены отдельно от основных диапазонов алфавита.
+        bool first_range = first == 0xD0 && second >= 0x90 && second <= 0xBF;
+        bool second_range = first == 0xD1 && second >= 0x80 && second <= 0x8F;
+        bool letter_yo = (first == 0xD0 && second == 0x81)
+                      || (first == 0xD1 && second == 0x91);
+        if (!first_range && !second_range && !letter_yo) return false;
+        i += 2;
+    }
+    return true;
 }
