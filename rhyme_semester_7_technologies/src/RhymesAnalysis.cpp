@@ -1,4 +1,7 @@
 #include "RhymesAnalysis.h"
+#include <fstream>
+#include <sstream>
+#include <unordered_map>
 
 
 // Длина в байтах последнего UTF-8 символа в s, либо 0 если s пуста.
@@ -99,7 +102,7 @@ void assimilate_voicing(vector<string_view>& sounds) {
         devoice = sound == "п" || sound == "ф" || sound == "к" || sound == "т"
                || sound == "ш" || sound == "с" || sound == "х" || sound == "ц"
                || sound == "ч" || sound == "щ";
-        // «в» само оглушается, но не озвончает предыдущий согласный.
+        // "в" само оглушается, но не озвончает предыдущий согласный.
         voice = sound == "б" || sound == "г" || sound == "д" || sound == "ж" || sound == "з";
     }
 }
@@ -146,13 +149,13 @@ string to_phonetic(string_view word) {
 
 
 // Длина общего суффикса (с конца) в символах.
-// Сравнение посимвольное (UTF-8-aware), счёт — в символах, не в байтах.
+// Сравнение посимвольное, счёт - в символах, не в байтах.
 size_t common_suffix_len(string_view a, string_view b) {
     size_t count = 0;
     while (!a.empty() && !b.empty()) {
         size_t la = last_char_bytes(a);
         size_t lb = last_char_bytes(b);
-        if (la != lb) break;                       // разная ширина → символы разные
+        if (la != lb) break; // разная ширина -> символы разные
         if (a.substr(a.size() - la) != b.substr(b.size() - lb)) break;
         a.remove_suffix(la);
         b.remove_suffix(lb);
@@ -168,7 +171,7 @@ bool phonetic_ends_with(string_view text, string_view tail) {
 
 // Коэффициент схожести 0...1.
 // Значение = доля более короткой строки, покрытая общим суффиксом.
-//   common == min_len  ->  1.0 (одна строка — суффикс другой)
+//   common == min_len  ->  1.0 (одна строка - суффикс другой)
 //   common == 0        ->  0.0
 double similarity(string_view phonetic_a, string_view phonetic_b) {
     if (phonetic_a.empty() || phonetic_b.empty()) {
@@ -189,7 +192,7 @@ double similarity(string_view phonetic_a, string_view phonetic_b) {
     if (res == 1.0 || common == 0) return res;
 
     // Для кириллической рифмы нужен общий гласный перед возвратным
-    // хвостом: «ца» или «са» сами по себе не дают рифму.
+    // хвостом: "ца" или "са" сами по себе не дают рифму.
     string_view tail = phonetic_a;
     if (phonetic_ends_with(tail, "ца") || phonetic_ends_with(tail, "са")) tail.remove_suffix(4);
     bool shared_vowel = false;
@@ -208,8 +211,8 @@ double similarity(string_view phonetic_a, string_view phonetic_b) {
     }
     if (cyrillic_tail && !shared_vowel) return 0.0;
 
-    // Совпадение только по продуктивному суффиксу и «ть» — слабый
-    // сигнал: у «рисовать» и «чувствовать» одинаковые хвосты на письме.
+    // Совпадение только по продуктивному суффиксу и "ть" - слабый
+    // сигнал: у "рисовать" и "чувствовать" одинаковые хвосты на письме.
     if (common == 4 && (phonetic_ends_with(phonetic_a, "оват") || phonetic_ends_with(phonetic_a, "эват"))) {
         res *= 0.8;
     }
@@ -293,14 +296,104 @@ uint64_t extract_sentence_num(string_view& body) {
 	return val;
 }
 
+// Ключ словаря допускает написание "е" вместо "ё".
+string stress_key(string word) {
+    size_t pos = word.find("ё");
+    while (pos != string::npos) {
+        word.replace(pos, 2, "е");
+        pos = word.find("ё", pos + 2);
+    }
+    return word;
+}
+
+string stressed_tail(string_view word, size_t offset) {
+    string_view tail = word.substr(offset);
+    string phonetic = to_phonetic(tail);
+    // При обработке отдельного хвоста "е", "ё", "ю", "я" получают
+    // начальный "й". В рифме отсчёт начинается с самой гласной.
+    if (phonetic.find("й") == 0) phonetic.erase(0, 2);
+    return phonetic;
+}
+
+unordered_map<string, string> load_verb_stress() {
+    unordered_map<string, string> tails;
+    ifstream input("lib/stress.txt");
+    string line;
+    while (getline(input, line)) {
+        istringstream row(line);
+        string word;
+        size_t stress = 0;
+        string extra;
+        if (!(row >> word >> stress) || stress == 0 || (row >> extra)) continue;
+
+        size_t vowels = 0;
+        for (size_t pos = 0; pos < word.size();) {
+            string_view remaining(word.data() + pos, word.size() - pos);
+            size_t bytes = first_char_bytes(remaining);
+            string_view ch = remaining.substr(0, bytes);
+            if (is_vowel(ch)) ++vowels;
+            if (vowels == stress) {
+                string key = stress_key(word);
+                string tail = stressed_tail(word, pos);
+                auto entry = tails.emplace(key, tail);
+                if (!entry.second && entry.first->second != tail) entry.first->second.clear();
+                break;
+            }
+            pos += bytes;
+        }
+    }
+    return tails;
+}
+
+RhymeWord prepare_rhyme_word(string_view word) {
+    RhymeWord result;
+    string lower = lower_word(word);
+    result.phonetic = to_phonetic(lower);
+
+    size_t vowels = 0;
+    size_t last_vowel = 0;
+    size_t yo = string::npos;
+    for (size_t pos = 0; pos < lower.size();) {
+        string_view remaining(lower.data() + pos, lower.size() - pos);
+        size_t bytes = first_char_bytes(remaining);
+        string_view ch = remaining.substr(0, bytes);
+        if (is_vowel(ch)) {
+            ++vowels;
+            last_vowel = pos;
+        } else if (!is_consonant(ch) && ch != "ь" && ch != "ъ") {
+            return result;
+        }
+        if (ch == "ё") {
+            if (yo != string::npos) return result;
+            yo = pos;
+        }
+        pos += bytes;
+    }
+
+    if (yo != string::npos) {
+        result.stressed_tail = stressed_tail(lower, yo);
+    } else if (vowels == 1) {
+        result.stressed_tail = stressed_tail(lower, last_vowel);
+    } else if (vowels > 1) {
+        static const unordered_map<string, string> tails = load_verb_stress();
+        auto entry = tails.find(lower);
+        if (entry != tails.end()) result.stressed_tail = entry->second;
+    }
+    return result;
+}
+
+double compare_rhyme_words(const RhymeWord& w1, const RhymeWord& w2) {
+    if (!w1.stressed_tail.empty() && !w2.stressed_tail.empty()) {
+        if (w1.stressed_tail == w2.stressed_tail) return 1.0;
+        return 0.0;
+    }
+    return similarity(w1.phonetic, w2.phonetic);
+}
+
 double rhyme_similarity(const VerbInfo& w1, const VerbInfo& w2) {
-	if (w1.verb.empty() || w2.verb.empty()) {
-		return 0.0;
-	}
-	string p1 = to_phonetic(w1.verb);
-	string p2 = to_phonetic(w2.verb);
-	double res = similarity(p1, p2);
-	return res;
+    RhymeWord p1 = prepare_rhyme_word(w1.verb);
+    RhymeWord p2 = prepare_rhyme_word(w2.verb);
+    return compare_rhyme_words(p1, p2);
 }
 
 bool is_rhyme(const VerbInfo& w1, const VerbInfo& w2,
@@ -408,15 +501,15 @@ vector<VerbStruct> find_rhymes(
     }
 
     // Кэшируем фонетические формы, чтобы не считать их повторно
-    vector<string> phon(all_verbs.size());
+    vector<RhymeWord> phon(all_verbs.size());
     for (size_t i = 0; i < all_verbs.size(); ++i) {
-        phon[i] = to_phonetic(all_verbs[i].verb);
+        phon[i] = prepare_rhyme_word(all_verbs[i].verb);
     }
 
     // Перебираем пары (i < j) и добавляем без дублей
     for (size_t i = 0; i < all_verbs.size(); ++i) {
         for (size_t j = i + 1; j < all_verbs.size(); ++j) {
-            double sim = similarity(phon[i], phon[j]);
+            double sim = compare_rhyme_words(phon[i], phon[j]);
             if (sim < min_similarity) {
                 continue;
             }

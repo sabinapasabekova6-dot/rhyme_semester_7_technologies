@@ -217,9 +217,9 @@ vector<RhymeStats> buildRhymeStats(const vector<VerbInfo>& verbs, double minSimi
     cout << "Уникальных глаголов: " << words.size() << endl;
 
     // ШАГ 2. Фонетическая запись считается один раз для каждого уникального слова
-    vector<string> phonetic(words.size());
+    vector<RhymeWord> phonetic(words.size());
     for (int i = 0; i < (int)words.size(); i++) {
-        phonetic[i] = to_phonetic(words[i].word);
+        phonetic[i] = prepare_rhyme_word(words[i].word);
     }
 
     // ШАГ 3. Перебираем пары УНИКАЛЬНЫХ слов (i < j), поэтому пара
@@ -228,7 +228,7 @@ vector<RhymeStats> buildRhymeStats(const vector<VerbInfo>& verbs, double minSimi
         for (int j = i + 1; j < (int)words.size(); j++) {
 
             // окончания недостаточно похожи - не рифма
-            if (similarity(phonetic[i], phonetic[j]) < minSimilarity) {
+            if (compare_rhyme_words(phonetic[i], phonetic[j]) < minSimilarity) {
                 continue;
             }
             // TODO: Подумать над этим

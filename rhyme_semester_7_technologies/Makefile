@@ -15,13 +15,14 @@ TEST_PRECISION := test_rhymes_precision
 TEST_COMPLEX := test_rhymes_complex
 TEST_VERBS := test_identverbs
 TEST_DIAG := test_diagnostic
+TEST_STRESS := test_rhyme_stress
 
 ALL_TESTS := $(TEST_RHYMES) $(TEST_PRECISION) $(TEST_COMPLEX) \
-             $(TEST_VERBS) $(TEST_DIAG)
+             $(TEST_VERBS) $(TEST_DIAG) $(TEST_STRESS)
 
 .PHONY: all test clean help \
         run_rhymes run_rhymes_precision run_rhymes_complex \
-        run_identverbs run_diagnostic
+        run_identverbs run_diagnostic run_rhyme_stress
 
 # ============================================================
 #  Основные цели
@@ -47,6 +48,9 @@ $(TEST_VERBS): $(OBJ_VERB) tests/test_identverbs.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 $(TEST_DIAG): $(OBJ_VERB) tests/test_diagnostic.cpp
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+
+$(TEST_STRESS): $(OBJ_PREVIEW) tests/test_rhyme_stress.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 # ---------- Правило: .cpp -> .o ----------
@@ -76,6 +80,9 @@ test: $(ALL_TESTS)
 	@echo "===== Diagnostic ====="
 	./$(TEST_DIAG)
 	@echo
+	@echo "===== Ударения и статистика рифм ====="
+	./$(TEST_STRESS)
+	@echo
 	@echo "Все тесты пройдены."
 
 # ---------- Запуск отдельных тестов ----------
@@ -94,6 +101,9 @@ run_identverbs: $(TEST_VERBS)
 run_diagnostic: $(TEST_DIAG)
 	./$(TEST_DIAG)
 
+run_rhyme_stress: $(TEST_STRESS)
+	./$(TEST_STRESS)
+
 # ============================================================
 #  Очистка и справка
 # ============================================================
@@ -110,6 +120,7 @@ help:
 	@echo "  make run_rhymes_complex - запустить test_rhymes_complex"
 	@echo "  make run_identverbs - запустить test_identverbs"
 	@echo "  make run_diagnostic - запустить test_diagnostic"
+	@echo "  make run_rhyme_stress - проверить ударения и вывести статистику рифм"
 	@echo "  make rhyme_preview - собрать консольную проверку для Linux"
 	@echo "  make clean - удалить собранные файлы"
 	@echo "  make help - показать эту справку"

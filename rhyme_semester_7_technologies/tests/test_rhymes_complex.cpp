@@ -24,7 +24,7 @@ TEST(RhymeSimilarityTest, IdenticalVerbs) {
 }
 
 TEST(RhymeSimilarityTest, RhymePair) {
-    VerbInfo a; a.verb = "делать";
+    VerbInfo a; a.verb = "желать";
     VerbInfo b; b.verb = "гулять";
     EXPECT_GT(rhyme_similarity(a, b), 0.5);
     EXPECT_TRUE(is_rhyme(a, b));
@@ -38,8 +38,8 @@ TEST(RhymeSimilarityTest, NonRhymePair) {
 }
 
 TEST(RhymeSimilarityTest, CustomThreshold) {
-    VerbInfo a; a.verb = "делать";
-    VerbInfo b; b.verb = "гулять";
+    VerbInfo a; a.verb = "желать";
+    VerbInfo b; b.verb = "псевдогулять";
     EXPECT_FALSE(is_rhyme(a, b, 0.99));
     EXPECT_TRUE (is_rhyme(a, b, 0.1));
 }
@@ -126,10 +126,10 @@ TEST(FindRhymesTest, RhymeInOneSentence) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
+    sentences.push_back("1. Желать и гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 1, 1));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 1, 1));
 }
 
 TEST(FindRhymesTest, RhymeAcrossSentences) {
@@ -137,11 +137,11 @@ TEST(FindRhymesTest, RhymeAcrossSentences) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать.");
+    sentences.push_back("1. Желать.");
     sentences.push_back("2. Гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 1, 2));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 1, 2));
 }
 
 TEST(FindRhymesTest, MultiplePairsInText) {
@@ -149,11 +149,11 @@ TEST(FindRhymesTest, MultiplePairsInText) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
+    sentences.push_back("1. Желать и гулять.");
     sentences.push_back("2. Любить и рубить.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 1, 1));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 1, 1));
     EXPECT_TRUE(has_pair(res, "любить", "рубить", 2, 2));
 }
 
@@ -170,15 +170,14 @@ TEST(FindRhymesTest, NonRhymeNotReturned) {
 
 // -------- пороги --------
 
-TEST(FindRhymesTest, HighThresholdFiltersAll) {
+TEST(FindRhymesTest, ExactRhymePassesHighestThreshold) {
     if (!lib_loaded()) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
-    // при min_similarity = 1.0 рифма возможна только для идентичных слов
+    sentences.push_back("1. Желать и гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 1.0);
-    EXPECT_FALSE(has_pair(res, "делать", "гулять", 1, 1));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 1, 1));
 }
 
 TEST(FindRhymesTest, LowThresholdFindsMore) {
@@ -186,10 +185,10 @@ TEST(FindRhymesTest, LowThresholdFindsMore) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
+    sentences.push_back("1. Желать и псевдогулять.");
     vector<VerbStruct> strict = find_rhymes(sentences, 50, 0.8);
     vector<VerbStruct> loose  = find_rhymes(sentences, 50, 0.1);
-    EXPECT_LE(strict.size(), loose.size());
+    EXPECT_LT(strict.size(), loose.size());
 }
 
 TEST(FindRhymesTest, HighVerbScoreFilters) {
@@ -197,7 +196,7 @@ TEST(FindRhymesTest, HighVerbScoreFilters) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
+    sentences.push_back("1. Желать и гулять.");
     // score = 100 - отсекает всё, что не набрало максимум
     vector<VerbStruct> res = find_rhymes(sentences, 100, 0.5);
     // Ничего не падает; результат может быть пустым или нет, но
@@ -213,11 +212,11 @@ TEST(FindRhymesTest, NoDuplicatePairs) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
+    sentences.push_back("1. Желать и гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    // Пара (делать, гулять) должна быть один раз, не два
-    int cnt = count_pair(res, "делать", "гулять");
+    // Пара (желать, гулять) должна быть один раз, не два
+    int cnt = count_pair(res, "желать", "гулять");
     EXPECT_EQ(cnt, 1);
 }
 
@@ -227,11 +226,11 @@ TEST(FindRhymesTest, NoDuplicateAcrossRepeatedSentences) {
     }
     // Одно и то же предложение встречается дважды
     vector<string> sentences;
-    sentences.push_back("1. Делать и гулять.");
-    sentences.push_back("1. Делать и гулять.");
+    sentences.push_back("1. Желать и гулять.");
+    sentences.push_back("1. Желать и гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    int cnt = count_pair(res, "делать", "гулять");
+    int cnt = count_pair(res, "желать", "гулять");
     EXPECT_EQ(cnt, 1);
 }
 
@@ -242,11 +241,11 @@ TEST(FindRhymesTest, SentenceNumbersPreserved) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("7. Делать.");
+    sentences.push_back("7. Желать.");
     sentences.push_back("13. Гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 7, 13));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 7, 13));
 }
 
 TEST(FindRhymesTest, NoNumberGivesZero) {
@@ -255,11 +254,11 @@ TEST(FindRhymesTest, NoNumberGivesZero) {
     }
     // Без номера в начале - num будет 0
     vector<string> sentences;
-    sentences.push_back("Делать.");
+    sentences.push_back("Желать.");
     sentences.push_back("Гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 0, 0));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 0, 0));
 }
 
 TEST(FindRhymesTest, MixedNumberedAndPlain) {
@@ -267,11 +266,11 @@ TEST(FindRhymesTest, MixedNumberedAndPlain) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("1. Делать.");
+    sentences.push_back("1. Желать.");
     sentences.push_back("Гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 1, 0));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 1, 0));
 }
 
 // -------- структура VerbStruct --------
@@ -281,7 +280,7 @@ TEST(FindRhymesTest, VerbStructFieldsFilled) {
         GTEST_SKIP() << "lib/ не загружена";
     }
     vector<string> sentences;
-    sentences.push_back("3. Делать.");
+    sentences.push_back("3. Желать.");
     sentences.push_back("5. Гулять.");
     vector<VerbStruct> res = find_rhymes(sentences, 50, 0.5);
 
@@ -291,9 +290,9 @@ TEST(FindRhymesTest, VerbStructFieldsFilled) {
         EXPECT_FALSE(res[k].verb1.empty());
         EXPECT_FALSE(res[k].verb2.empty());
         EXPECT_NE(res[k].verb1, res[k].verb2);
-        // Хотя бы одна из пар - деладь/гулять с номерами 3 и 5
+        // Хотя бы одна из пар - желать/гулять с номерами 3 и 5
     }
-    EXPECT_TRUE(has_pair(res, "делать", "гулять", 3, 5));
+    EXPECT_TRUE(has_pair(res, "желать", "гулять", 3, 5));
 }
 
 TEST(FindRhymesTest, SimilarVerbsDifferentSentences) {

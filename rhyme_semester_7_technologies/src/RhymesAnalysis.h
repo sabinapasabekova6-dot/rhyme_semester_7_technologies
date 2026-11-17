@@ -68,6 +68,18 @@ struct VerbStruct {
 // Возвращает номер или 0, если номера нет.
 uint64_t extract_sentence_num(string_view& body);
 
+struct RhymeWord {
+    string phonetic;
+    string stressed_tail; // пустой, если ударение неизвестно
+};
+
+// Готовит полную фонетическую запись и хвост от ударной гласной.
+RhymeWord prepare_rhyme_word(string_view word);
+
+// Если оба ударения известны, совпадение хвостов даёт 1.0, различие — 0.0.
+// Иначе используется прежняя оценка по общему фонетическому суффиксу.
+double compare_rhyme_words(const RhymeWord& w1, const RhymeWord& w2);
+
 // Коэффициент рифмы двух глаголов (от 0.0 до 1.0).
 // Параметры: w1, w2 - структуры VerbInfo (поле verb).
 double rhyme_similarity(const VerbInfo& w1, const VerbInfo& w2);
