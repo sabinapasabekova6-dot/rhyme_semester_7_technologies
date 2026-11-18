@@ -10,9 +10,11 @@ using namespace std;
 //   3) файл не пустой.
 string requestValidInputFile() {
     while (true) {
-        cout << "Введите имя входного файла: ";
+        cout << "Введите имя входного файла (или # для выхода): ";
         string filename;
-        getline(cin, filename);
+        if (!getline(cin, filename) || filename == "#") {
+            return {};
+        }
 
         // Проверка 1 не пустое  ли название  файла 
         if (filename.empty()) {

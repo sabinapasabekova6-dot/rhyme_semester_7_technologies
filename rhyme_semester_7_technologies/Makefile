@@ -8,6 +8,8 @@ LDLIBS := -lgtest -lgtest_main -pthread
 OBJ_RHYMES := RhymesAnalysis.o
 OBJ_VERB := IdentVerbs.o MorphRules.o
 OBJ_PREVIEW := $(OBJ_RHYMES) $(OBJ_VERB) result_file.o
+OBJ_APP := $(OBJ_PREVIEW) file_processing.o rhyme_semester_7_technologies.o
+APP_EXE := bin/rhyme_semester_7_technologies.exe
 
 # ---------- Имена собранных тестов ----------
 TEST_RHYMES := test_rhymes
@@ -20,7 +22,7 @@ TEST_STRESS := test_rhyme_stress
 ALL_TESTS := $(TEST_RHYMES) $(TEST_PRECISION) $(TEST_COMPLEX) \
              $(TEST_VERBS) $(TEST_DIAG) $(TEST_STRESS)
 
-.PHONY: all test clean help \
+.PHONY: all exe test clean help \
         run_rhymes run_rhymes_precision run_rhymes_complex \
         run_identverbs run_diagnostic run_rhyme_stress
 
@@ -30,6 +32,16 @@ ALL_TESTS := $(TEST_RHYMES) $(TEST_PRECISION) $(TEST_COMPLEX) \
 
 # Собрать все тесты без запуска
 all: $(ALL_TESTS)
+
+# Собрать консольное приложение компилятором MinGW.
+exe: $(APP_EXE)
+
+$(APP_EXE): $(OBJ_APP)
+	mkdir -p bin
+	$(CXX) $(LDFLAGS) -static $^ -o $@
+
+# В isLetterChar верхняя граница unsigned char проверяется явно.
+file_processing.o: CXXFLAGS += -Wno-type-limits
 
 # ============================================================
 #  Сборка отдельных тестов
@@ -57,7 +69,7 @@ $(TEST_STRESS): $(OBJ_PREVIEW) tests/test_rhyme_stress.cpp
 %.o: src/%.cpp
 	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
--include $(OBJ_PREVIEW:.o=.d)
+-include $(OBJ_APP:.o=.d)
 
 rhyme_preview: rhyme_preview.cpp $(OBJ_PREVIEW)
 	$(CXX) $(CXXFLAGS) $^ -o $@
@@ -109,11 +121,12 @@ run_rhyme_stress: $(TEST_STRESS)
 # ============================================================
 
 clean:
-	rm -f $(ALL_TESTS) rhyme_preview $(OBJ_PREVIEW) $(OBJ_PREVIEW:.o=.d)
+	rm -f $(ALL_TESTS) rhyme_preview $(APP_EXE) $(OBJ_APP) $(OBJ_APP:.o=.d)
 
 help:
 	@echo "Доступные цели:"
 	@echo "  make all - собрать все тесты (без запуска)"
+	@echo "  make exe - собрать $(APP_EXE) с MinGW"
 	@echo "  make test - собрать и запустить все тесты"
 	@echo "  make run_rhymes - запустить test_rhymes"
 	@echo "  make run_rhymes_precision - запустить test_rhymes_precision"

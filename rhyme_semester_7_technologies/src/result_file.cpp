@@ -346,5 +346,5 @@ void writeToFile(const vector<RhymeStats>& stats, const string& filename) {
     }
 
     fclose(out);
-    cout << "Результаты записаны в файл: " << filename << endl;
+    cout << "Результаты успешно записаны в файл: " << filename << endl;
 }
