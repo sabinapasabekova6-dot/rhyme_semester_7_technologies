@@ -9,39 +9,60 @@ using namespace std;
 //   2) файл существует и открывается для чтения;
 //   3) файл не пустой.
 string requestValidInputFile() {
-    while (true) {
-        cout << "Введите имя входного файла: ";
-        string filename;
+    bool keepRunning = true;   // флаг завершать ли программу 
+    string filename = "";      // переменная для имени файла
+
+    while (keepRunning) {
+        // Запрос имени у пользователя
+        cout << "Введите имя входного файла (или введите # для завершения программы): ";
         getline(cin, filename);
 
-        // Проверка 1 не пустое  ли название  файла 
-        if (filename.empty()) {
-            cout << "Ошибка: имя файла не может быть пустым. Попробуйте снова.\n\n";
-            continue;
+        //  сигнал завершения
+        if (filename == "#") {
+            cout << "Программа завершена" << endl;
+            exit(0);   // мгновенное завершение всей программы
         }
 
-        // Проверка 2: открывается ли файл для чтения
+        //  имя не пустое
+        if (filename.empty()) {
+            cout << "Ошибка: имя файла не может быть пустым. Попробуйте снова.\n\n";
+            continue;  // возвращаемся к началу цикла, снова просим ввод
+        }
+
+        //  файл открывается для чтения
         ifstream file(filename.c_str(), ios::binary);
         if (!file.is_open()) {
             cout << "Ошибка: не удалось открыть файл \"" << filename
-                << "\". Проверьте названиe и попробуйте снова.\n\n";
+                << "\". Проверьте название и попробуйте снова.\n\n";
             continue;
         }
 
-        // Проверка 3: файл не пустой.
-        file.seekg(0, ios::end);
-        streampos size = file.tellg();
-        file.close();
+        //  файл не пустой
+        file.seekg(0, ios::end);       // перемещаем курсор в конец файла
+        streampos size = file.tellg(); // узнаём позицию конца = размер файла
+        file.close();                  // закрываем, дальше файл уже не нужен
 
         if (size <= 0) {
             cout << "Ошибка: файл \"" << filename << "\" пустой. Введите другой файл.\n\n";
             continue;
         }
 
-        // Все проверки пройдены 
-        cout << "Файл \"" << filename << "\" успешно открыт \n";
-        return filename;
+        // Все проверки пройдены - файл годный
+        cout << "Файл \"" << filename << "\" успешно открыт\n";
+
+        //  был ли файл обработан ранее
+        string numberedFile = filename + "_numbered_sentences.txt";
+        string resultFile = filename + "_resilt_file";
+
+        if (isOutputExists(numberedFile) || isOutputExists(resultFile)) {
+            cout << "Этот файл ранее был обработан, новая информация для этого файла "
+                << "будет перезаписана в уже существующие выходные файлы\n";
+        }
+
+        // Файл валиден, меняем флаг, чтобы выйти из цикла и вернуть имя
+        keepRunning = false;
     }
+    return filename;
 }
 
 // строит имя выходного файла на основе имени входного:

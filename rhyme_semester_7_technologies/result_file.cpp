@@ -13,6 +13,12 @@ using namespace std;
 
 // ¬—ѕќћќ√ј“≈Ћ№Ќџ≈ ‘”Ќ ÷»»
 
+// ‘ункци€ проверки существовани€ файла
+bool isOutputExists(const string& filename) {
+    ifstream file(filename.c_str());
+    return file.good();  // good() возвращает true, если файл найден и доступен
+}
+
 // принимает строку по значению, возвращает строку в нижнем регистре
 string toLowerStr(string s) {
     string res = "";
@@ -327,5 +333,5 @@ void writeToFile(const vector<RhymeStats>& stats, const string& filename) {
     }
 
     fclose(out);
-    cout << "–езультаты записаны в файл: " << filename << endl; //  информационный вывод в консоль
+    cout << "–езультат анализа рифм записан в файл: " << filename << endl; //  информационный вывод в консоль
 }

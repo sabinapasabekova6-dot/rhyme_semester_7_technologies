@@ -76,6 +76,8 @@ struct RhymeStats {
 
 //  ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
  
+// Функция проверки существования файла
+bool isOutputExists(const string& filename);
 
 // принимает строку по значению, возвращает строку в нижнем регистре
 string toLowerStr(string s);
