@@ -18,7 +18,7 @@ static bool outputExists(const string& path) {
 
 static void analyzeFile(const string& path) {
     const string numberedPath = buildNumberedSentencesFileName(path);
-    const string outputPath = path + "_result_file.txt";
+    const string outputPath = std::filesystem::path(path).replace_extension().string() + "_result_file.txt";
     const string debugPath = path + "_verbs_debug.txt";
 
     if (outputExists(numberedPath) || outputExists(outputPath) || outputExists(debugPath)) {

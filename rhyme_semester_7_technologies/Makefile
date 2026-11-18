@@ -33,6 +33,7 @@ ALL_TESTS := $(TEST_RHYMES) $(TEST_PRECISION) $(TEST_COMPLEX) \
 # Собрать все тесты без запуска
 all: $(ALL_TESTS)
 
+# g++ -std=c++20 -Isrc -static src/RhymesAnalysis.cpp src/IdentVerbs.cpp src/MorphRules.cpp src/result_file.cpp src/file_processing.cpp src/rhyme_semester_7_technologies.cpp -o app.exe
 # Собрать консольное приложение компилятором MinGW.
 exe: $(APP_EXE)
 
